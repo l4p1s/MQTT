@@ -80,58 +80,58 @@ void send_message_to_client(int socket_fd, unsigned char *message, int message_l
 }
 
 
-uint8_t return_str_MSB(uint16_t strlength) {
-    return (strlength >> 8);
-}
+// uint8_t return_str_MSB(uint16_t strlength) {
+//     return (strlength >> 8);
+// }
 
-uint8_t return_str_LSB(uint16_t strlength) {
-    return strlength & 0xFF;
-}
+// uint8_t return_str_LSB(uint16_t strlength) {
+//     return strlength & 0xFF;
+// }
 
-uint16_t combine_MSB_LSB(uint8_t msb, uint8_t lsb) {
-    return ((uint16_t)msb << 8) | lsb;
-}
+// uint16_t combine_MSB_LSB(uint8_t msb, uint8_t lsb) {
+//     return ((uint16_t)msb << 8) | lsb;
+// }
 
 // encode.c
-unsigned char* encode_Remining_length(int length) {
-    unsigned char *encoded_bytes = (unsigned char *)malloc(4);
-    if (encoded_bytes == NULL) {
-        fprintf(stderr, "Memory allocation failed\n");
-        return NULL;
-    }
+// unsigned char* encode_Remining_length(int length) {
+//     unsigned char *encoded_bytes = (unsigned char *)malloc(4);
+//     if (encoded_bytes == NULL) {
+//         fprintf(stderr, "Memory allocation failed\n");
+//         return NULL;
+//     }
 
-    int index = 0;
-    do {
-        encoded_bytes[index] = length % 128;
-        length = length / 128;
-        if (length > 0) {
-            encoded_bytes[index] |= 0x80;
-        }
-        index++;
-    } while (length > 0);
+//     int index = 0;
+//     do {
+//         encoded_bytes[index] = length % 128;
+//         length = length / 128;
+//         if (length > 0) {
+//             encoded_bytes[index] |= 0x80;
+//         }
+//         index++;
+//     } while (length > 0);
 
-    return encoded_bytes;
-}
+//     return encoded_bytes;
+// }
 
 // decode.c
-unsigned int decode_remaining_length(unsigned char *encoded_bytes) {
-    unsigned int multiplier = 1;
-    unsigned int value = 0;
-    unsigned char encodedByte;
-    int index = 0;
-    do {
-        encodedByte = encoded_bytes[index++];
-        value += (encodedByte & 127) * multiplier;
-        multiplier *= 128;
+// unsigned int decode_remaining_length(unsigned char *encoded_bytes) {
+//     unsigned int multiplier = 1;
+//     unsigned int value = 0;
+//     unsigned char encodedByte;
+//     int index = 0;
+//     do {
+//         encodedByte = encoded_bytes[index++];
+//         value += (encodedByte & 127) * multiplier;
+//         multiplier *= 128;
 
-        if (multiplier > 128 * 128 * 128) {
-            fprintf(stderr, "Error: Malformed Remaining Length\n");
-            return 0;
-        }
-    } while ((encodedByte & 128) != 0);
+//         if (multiplier > 128 * 128 * 128) {
+//             fprintf(stderr, "Error: Malformed Remaining Length\n");
+//             return 0;
+//         }
+//     } while ((encodedByte & 128) != 0);
 
-    return value;
-}
+//     return value;
+// }
 
 unsigned char* return_connack(MQTT_fixed_header *fh) {
     printf("create connack message\n");
