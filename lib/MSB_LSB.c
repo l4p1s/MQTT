@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdint.h>
 
 uint8_t return_str_MSB(uint16_t strlength) {
     return (strlength >> 8);

@@ -10,14 +10,14 @@
 #include "type_h.h"
 #include "../lib/MSB_LSB.h"
 
-uint8_t return_str_MSB(uint16_t strlength);
-uint8_t return_str_LSB(uint16_t strlength);
-uint16_t combine_MSB_LSB(uint8_t msb, uint8_t lsb);
+// uint8_t return_str_MSB(uint16_t strlength);
+// uint8_t return_str_LSB(uint16_t strlength);
+// uint16_t combine_MSB_LSB(uint8_t msb, uint8_t lsb);
 
 
-void main(){
+int main(){
 
-printf("%d\n", return_str_LSB(3));
+printf("%d\n",combine_MSB_LSB(0,3));
 
-return;
+return 0 ;
 }

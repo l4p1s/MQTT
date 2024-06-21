@@ -8,6 +8,11 @@
 #include <arpa/inet.h>
 #include <pthread.h> // Include pthread library
 #include "type_h.h"
+#include "../lib/build_command.h"
+#include "../lib/encode.h"
+#include "../lib/decode.h"
+#include "../lib/MSB_LSB.h"
+#include "../lib/send_message.h"
 
 
 // Mutex for clients array
