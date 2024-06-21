@@ -16,6 +16,7 @@ int client_count = 0;
 // 関数プロトタイプ
 uint8_t return_str_MSB(uint16_t strlength);
 uint8_t return_str_LSB(uint16_t strlength);
+uint16_t combine_MSB_LSB(uint8_t msb, uint8_t lsb);
 unsigned char* encode_Remining_length(int length);
 unsigned int decode_remaining_length(unsigned char *encoded_bytes);
 unsigned char* return_connack(MQTT_fixed_header *fh);
@@ -26,7 +27,9 @@ void *handle_client(void *arg);
 void handle_client_connect(int socket_fd, struct sockaddr_in client_addr, char *client_id);
 void handle_client_disconnect(int socket_fd);
 void send_message_to_client(int socket_fd, unsigned char *message, int message_length);
-
+void control_topic_subscriber(int socket_fd, struct sockaddr_in client_addr, char *TOPICID , uint8_t request_QoS_level , int message_id);
+void unsubscribe_topic(int socket_fd , char *TOPICID);
+void init_subscriber_info();
 
 void control_topic_subscriber(int socket_fd, struct sockaddr_in client_addr, char *TOPICID , uint8_t request_QoS_level , int message_id){
     for(int i=0 ; i < MAX_CLIENTS ; i++){
@@ -73,11 +76,11 @@ void handle_client_disconnect(int socket_fd) {
     }
 }
 
-void send_message_to_client(int socket_fd, unsigned char *message, int message_length) {
-    if (send(socket_fd, message, message_length, 0) < 0) {
-        printf("ERROR writing to socket");
-    }
-}
+// void send_message_to_client(int socket_fd, unsigned char *message, int message_length) {
+//     if (send(socket_fd, message, message_length, 0) < 0) {
+//         printf("ERROR writing to socket");
+//     }
+// }
 
 
 // uint8_t return_str_MSB(uint16_t strlength) {
@@ -133,90 +136,97 @@ void send_message_to_client(int socket_fd, unsigned char *message, int message_l
 //     return value;
 // }
 
-unsigned char* return_connack(MQTT_fixed_header *fh) {
-    printf("create connack message\n");
-    fh->Control_Packet_type = 0x02; // CONNACK
-    fh->Flags = 0x02;
-    unsigned char *FX_LENGTH = encode_Remining_length(FIXED_SIZE);
-    if (FX_LENGTH == NULL) {
-        return NULL;
-    }
-    memcpy(fh->Remaining_Length, FX_LENGTH, FIXED_SIZE);
-    free(FX_LENGTH);
+// unsigned char* return_connack(MQTT_fixed_header *fh) {
+//     printf("create connack message\n");
+//     fh->Control_Packet_type = 0x02; // CONNACK
+//     fh->Flags = 0x02;
+//     unsigned char *FX_LENGTH = encode_Remining_length(FIXED_SIZE);
+//     if (FX_LENGTH == NULL) {
+//         return NULL;
+//     }
+//     memcpy(fh->Remaining_Length, FX_LENGTH, FIXED_SIZE);
+//     free(FX_LENGTH);
 
-    return (unsigned char *)fh;
-}
+//     return (unsigned char *)fh;
+// }
 
-unsigned char* return_suback(MQTT_fixed_header *fh) {
-    printf("create suback message\n");
-    fh->Control_Packet_type = 0x09; // SUBACK
-    unsigned char *FX_LENGTH = encode_Remining_length(FIXED_SIZE + sizeof(MQTT_payload_message_id_header_in_publish));
-    if (FX_LENGTH == NULL) {
-        return NULL;
-    }
-    memcpy(fh->Remaining_Length, FX_LENGTH, FIXED_SIZE);
-    free(FX_LENGTH);
+// unsigned char* return_suback(MQTT_fixed_header *fh) {
+//     printf("create suback message\n");
+//     fh->Control_Packet_type = 0x09; // SUBACK
+//     unsigned char *FX_LENGTH = encode_Remining_length(FIXED_SIZE + sizeof(MQTT_payload_message_id_header_in_publish));
+//     if (FX_LENGTH == NULL) {
+//         return NULL;
+//     }
+//     memcpy(fh->Remaining_Length, FX_LENGTH, FIXED_SIZE);
+//     free(FX_LENGTH);
 
-    MQTT_payload_message_id_header_in_publish *pmih  = (MQTT_payload_message_id_header_in_publish *)(fh + sizeof(MQTT_fixed_header));
-    pmih->MESSAGE_ID_length_MSB = return_str_MSB(MESSAGE_ID_SIZE);
-    pmih->MESSAGE_ID_length_LSB = return_str_LSB(MESSAGE_ID_SIZE);
-    return (unsigned char *)fh;
-}
+//     MQTT_payload_message_id_header_in_publish *pmih  = (MQTT_payload_message_id_header_in_publish *)(fh + sizeof(MQTT_fixed_header));
+//     pmih->MESSAGE_ID_length_MSB = return_str_MSB(MESSAGE_ID_SIZE);
+//     pmih->MESSAGE_ID_length_LSB = return_str_LSB(MESSAGE_ID_SIZE);
+//     return (unsigned char *)fh;
+// }
 
-unsigned char* send_publish_command(MQTT_fixed_header *cfh) {
-    cfh->Control_Packet_type = 0x03;
-    cfh->Flags = 0x02; 
-    unsigned char *FX_LENGTH = encode_Remining_length(FIXED_SIZE);
-    if (FX_LENGTH == NULL) {
-        return NULL;
-    }
-    memcpy(cfh->Remaining_Length, FX_LENGTH, FIXED_SIZE);
-    free(FX_LENGTH);
-    int Remaining_Length_ = sizeof(MQTT_payload_topic_id_header_in_publish) + sizeof(MQTT_payload_message_id_header_in_publish) +  strlen(TOPIC_ID) + MESSAGE_ID_SIZE + FIXED_SIZE;
-    MQTT_payload_topic_id_header_in_publish *ptih = (MQTT_payload_topic_id_header_in_publish *)(cfh + sizeof(MQTT_fixed_header) + (Remaining_Length_ / 128) + 1);
+// unsigned char* send_publish_command(MQTT_fixed_header *cfh) {
+//     cfh->Control_Packet_type = 0x03;
+//     cfh->Flags = 0x02; 
+//     unsigned char *FX_LENGTH = encode_Remining_length(FIXED_SIZE);
+//     if (FX_LENGTH == NULL) {
+//         return NULL;
+//     }
+//     memcpy(cfh->Remaining_Length, FX_LENGTH, FIXED_SIZE);
+//     free(FX_LENGTH);
+//     int Remaining_Length_ = sizeof(MQTT_payload_topic_id_header_in_publish) + sizeof(MQTT_payload_message_id_header_in_publish) +  strlen(TOPIC_ID) + MESSAGE_ID_SIZE + FIXED_SIZE;
+//     MQTT_payload_topic_id_header_in_publish *ptih = (MQTT_payload_topic_id_header_in_publish *)(cfh + sizeof(MQTT_fixed_header) + (Remaining_Length_ / 128) + 1);
 
-    ptih->TOPIC_ID_length_MSB = return_str_MSB(strlen(TOPIC_ID));
-    ptih->TOPIC_ID_length_LSB = return_str_LSB(strlen(TOPIC_ID));
-    strcpy(ptih->TOPICID, TOPIC_ID);
+//     ptih->TOPIC_ID_length_MSB = return_str_MSB(strlen(TOPIC_ID));
+//     ptih->TOPIC_ID_length_LSB = return_str_LSB(strlen(TOPIC_ID));
+//     strcpy(ptih->TOPICID, TOPIC_ID);
     
-    MQTT_payload_message_id_header_in_publish *pmih = (MQTT_payload_message_id_header_in_publish *)(ptih + sizeof(MQTT_payload_topic_id_header_in_publish)) + strlen(TOPIC_ID);
+//     MQTT_payload_message_id_header_in_publish *pmih = (MQTT_payload_message_id_header_in_publish *)(ptih + sizeof(MQTT_payload_topic_id_header_in_publish)) + strlen(TOPIC_ID);
 
-    pmih->MESSAGE_ID_length_MSB = return_str_MSB(MESSAGE_ID_SIZE);
-    pmih->MESSAGE_ID_length_LSB = return_str_LSB(MESSAGE_ID_SIZE);
+//     pmih->MESSAGE_ID_length_MSB = return_str_MSB(MESSAGE_ID_SIZE);
+//     pmih->MESSAGE_ID_length_LSB = return_str_LSB(MESSAGE_ID_SIZE);
 
-    MQTT_payload_message *mpm = (MQTT_payload_message *)(pmih + sizeof(MQTT_payload_message_id_header_in_publish));
-    memcpy(mpm->message, EXAMPLE_MASSAGE , sizeof(EXAMPLE_MASSAGE));
+//     MQTT_payload_message *mpm = (MQTT_payload_message *)(pmih + sizeof(MQTT_payload_message_id_header_in_publish));
+//     memcpy(mpm->message, EXAMPLE_MASSAGE , sizeof(EXAMPLE_MASSAGE));
 
-    return (unsigned char *)cfh;
-}
+//     return (unsigned char *)cfh;
+// }
 
-void print_struct_values(MQTT_fixed_header *fh, MQTT_payload_header_protocol_name *phpn, MQTT_Variable_Header_in_connect *vh, MQTT_payload_header_in_connect *ph) {
-    printf("MQTT fixed Header in CONNECT:\n");
-    printf("Control_Packet_type (Hex): %d\n", fh->Control_Packet_type);
-    printf("Message flags from client: %u\n", fh->Flags);
-    unsigned int remaining_length = decode_remaining_length(fh->Remaining_Length);
-    printf("Decoded Remaining Length: %u\n", remaining_length);
+// void print_struct_values(MQTT_fixed_header *fh, MQTT_payload_header_protocol_name *phpn, MQTT_Variable_Header_in_connect *vh, MQTT_payload_header_in_connect *ph) {
+//     printf("MQTT fixed Header in CONNECT:\n");
+//     printf("Control_Packet_type (Hex): %d\n", fh->Control_Packet_type);
+//     printf("Message flags from client: %u\n", fh->Flags);
+//     unsigned int remaining_length = decode_remaining_length(fh->Remaining_Length);
+//     printf("Decoded Remaining Length: %u\n", remaining_length);
 
-    printf("Protocol Name Length MSB: %d\n", phpn->protocol_name_length_MSB);
-    printf("Protocol Name Length LSB: %d\n", phpn->protocol_name_length_LSB);
-    printf("Protocol Name: %s\n", phpn->protocol_name);
+//     printf("Protocol Name Length MSB: %d\n", phpn->protocol_name_length_MSB);
+//     printf("Protocol Name Length LSB: %d\n", phpn->protocol_name_length_LSB);
+//     printf("Protocol Name: %s\n", phpn->protocol_name);
 
-    printf("Protocol Version: %d\n", vh->protocol_version);
-    printf("Something Flags: %d\n", vh->something_flags);
-    printf("Keep Alive Timer MSB: %d\n", vh->keep_alive_timer_MSB);
-    printf("Keep Alive Timer LSB: %d\n", vh->keep_alive_timer_LSB);
+//     printf("Protocol Version: %d\n", vh->protocol_version);
+//     printf("Something Flags: %d\n", vh->something_flags);
+//     printf("Keep Alive Timer MSB: %d\n", vh->keep_alive_timer_MSB);
+//     printf("Keep Alive Timer LSB: %d\n", vh->keep_alive_timer_LSB);
 
-    printf("Client ID Length MSB: %d\n", ph->clientID_length_MSB);
-    printf("Client ID Length LSB: %d\n", ph->clientID_length_LSB);
-    printf("Client ID: %s\n", ph->clientID);
-}
+//     printf("Client ID Length MSB: %d\n", ph->clientID_length_MSB);
+//     printf("Client ID Length LSB: %d\n", ph->clientID_length_LSB);
+//     printf("Client ID: %s\n", ph->clientID);
+// }
 
-void init_subscriber_info() {
-    for (int i = 0; i < MAX_CLIENTS; ++i) {
-        subscriber_info[i].socket_fd_for_subscriber = -1;
-    }
-}
+// unsigned char* return_connack(MQTT_fixed_header *fh) {
+//     printf("create connack message\n");
+//     fh->Control_Packet_type = 0x02; // CONNACK
+//     fh->Flags = 0x02;
+//     unsigned char *FX_LENGTH = encode_Remining_length(FIXED_SIZE);
+//     if (FX_LENGTH == NULL) {
+//         return NULL;
+//     }
+//     memcpy(fh->Remaining_Length, FX_LENGTH, FIXED_SIZE);
+//     free(FX_LENGTH);
 
+//     return (unsigned char *)fh;
+// }
 
 int main() {
     int server_fd, new_socket;
