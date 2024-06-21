@@ -21,3 +21,9 @@ PUBLISH
 
 めちゃくちゃ詳しく書かれてる
 [Init 1](https://codepr.github.io/posts/sol-mqtt-broker/)
+
+
+任意のヘッダーファイルのコンパイル方法
+
+ex :  gcc -o test_lib main/test_lib.c lib/MSB_LSB.c
+

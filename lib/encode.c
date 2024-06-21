@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 
 unsigned char* encode_Remining_length(int length) {
     unsigned char *encoded_bytes = (unsigned char *)malloc(4);
