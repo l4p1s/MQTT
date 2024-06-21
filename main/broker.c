@@ -92,7 +92,7 @@ uint16_t combine_MSB_LSB(uint8_t msb, uint8_t lsb) {
     return ((uint16_t)msb << 8) | lsb;
 }
 
-
+// encode.c
 unsigned char* encode_Remining_length(int length) {
     unsigned char *encoded_bytes = (unsigned char *)malloc(4);
     if (encoded_bytes == NULL) {
@@ -113,6 +113,7 @@ unsigned char* encode_Remining_length(int length) {
     return encoded_bytes;
 }
 
+// decode.c
 unsigned int decode_remaining_length(unsigned char *encoded_bytes) {
     unsigned int multiplier = 1;
     unsigned int value = 0;
