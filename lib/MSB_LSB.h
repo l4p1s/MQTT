@@ -1,5 +1,5 @@
 #ifndef _MSB_LSB_H_
-#define _MAB_LSB_H_
+#define _MSB_LSB_H_
  
 uint8_t return_str_MSB(uint16_t strlength);
 uint8_t return_str_LSB(uint16_t strlength);

@@ -9,6 +9,7 @@
 #include <pthread.h> // Include pthread library
 #include "type_h.h"
 
+
 // Mutex for clients array
 pthread_mutex_t clients_mutex = PTHREAD_MUTEX_INITIALIZER;
 int client_count = 0;
