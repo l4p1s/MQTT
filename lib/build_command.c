@@ -1,6 +1,7 @@
-// #include <stdio.h>
-// #include <stdlib.h>
-// #include <string.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
 
 
 // unsigned char* return_suback(MQTT_fixed_header *fh) {
@@ -18,19 +19,19 @@
 //     pmih->MESSAGE_ID_length_LSB = return_str_LSB(MESSAGE_ID_SIZE);
 //     return (unsigned char *)fh;
 // }
-// unsigned char* return_connack(MQTT_fixed_header *fh) {
-//     printf("create connack message\n");
-//     fh->Control_Packet_type = 0x02; // CONNACK
-//     fh->Flags = 0x02;
-//     unsigned char *FX_LENGTH = encode_Remining_length(FIXED_SIZE);
-//     if (FX_LENGTH == NULL) {
-//         return NULL;
-//     }
-//     memcpy(fh->Remaining_Length, FX_LENGTH, FIXED_SIZE);
-//     free(FX_LENGTH);
+unsigned char* return_connack(MQTT_fixed_header *fh) {
+    printf("create connack message\n");
+    fh->Control_Packet_type = 0x02; // CONNACK
+    fh->Flags = 0x02;
+    unsigned char *FX_LENGTH = encode_Remining_length(FIXED_SIZE);
+    if (FX_LENGTH == NULL) {
+        return NULL;
+    }
+    memcpy(fh->Remaining_Length, FX_LENGTH, FIXED_SIZE);
+    free(FX_LENGTH);
 
-//     return (unsigned char *)fh;
-// }
+    return (unsigned char *)fh;
+}
 
 // unsigned char* send_publish_command(MQTT_fixed_header *cfh) {
 //     cfh->Control_Packet_type = 0x03;

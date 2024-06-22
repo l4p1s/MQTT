@@ -28,7 +28,7 @@ unsigned int decode_remaining_length(unsigned char *encoded_bytes);
 unsigned char* return_connack(MQTT_fixed_header *fh);
 unsigned char* return_suback(MQTT_fixed_header *fh);
 unsigned char* send_publish_command(MQTT_fixed_header *cfh);
-void print_struct_values(MQTT_fixed_header *fh, MQTT_payload_header_protocol_name *phpn, MQTT_Variable_Header_in_connect *vh, MQTT_payload_header_in_connect *ph);
+void print_struct_values(MQTT_fixed_header *fh, MQTT_variable_header_protocol_name *phpn, MQTT_variable_Header_in_connect *vh, MQTT_variable_Header_in_connect *ph);
 void *handle_client(void *arg);
 void handle_client_connect(int socket_fd, struct sockaddr_in client_addr, char *client_id);
 void handle_client_disconnect(int socket_fd);
@@ -203,21 +203,28 @@ void *handle_client(void *arg) {
                         break;
                     }
                 }
-                printf("before\n");
-                printf("remaining_length_byte_count %d\n", remaining_length_byte_count);
-                strncpy(remaining_length_byte , &buffer[1] , remaining_length_byte_count+1);
+                // printf("before\n");
+                // printf("remaining_length_byte_count %d\n", remaining_length_byte_count);
+                memcpy(remaining_length_byte , &buffer[1] , remaining_length_byte_count+1);
                 Packet_Length = decode_remaining_length(remaining_length_byte);
-                printf("packet length : %d\n", Packet_Length);
+                // printf("packet length : %d\n", Packet_Length);
         
-                MQTT_payload_header_protocol_name *phpn = (MQTT_payload_header_protocol_name*)(p + remaining_length_byte_count + 1 +1);
-                printf("protocol_name_length_MSB : %d\n", phpn->protocol_name_length_MSB);
-                printf("protocol_name_length_LSB : %d\n", phpn->protocol_name_length_LSB);
-                printf("protocol name length  : %d\n", combine_MSB_LSB(phpn->protocol_name_length_MSB , phpn->protocol_name_length_LSB));
-                printf("protocol name  : %s\n", phpn->protocol_name);
+                MQTT_variable_header_protocol_name *phpn = (MQTT_variable_header_protocol_name*)(p + remaining_length_byte_count + 1 +1);
+                // printf("protocol_name_length_MSB : %d\n", phpn->protocol_name_length_MSB);
+                // printf("protocol_name_length_LSB : %d\n", phpn->protocol_name_length_LSB);
+                // printf("protocol name length  : %d\n", combine_MSB_LSB(phpn->protocol_name_length_MSB , phpn->protocol_name_length_LSB));
+                // printf("protocol name  : %s\n", phpn->protocol_name);
 
+                MQTT_variable_Header_in_connect *mphic = (MQTT_variable_Header_in_connect *)((char*)phpn + sizeof(MQTT_variable_header_protocol_name) + combine_MSB_LSB(phpn->protocol_name_length_MSB , phpn->protocol_name_length_LSB) );
+                MQTT_payload_header_in_connect *phic = (MQTT_payload_header_in_connect *)((char*) mphic + sizeof(MQTT_variable_Header_in_connect));
+                printf("protocol version : %d\n", mphic->protocol_version);
                 char client_id[BUFFER_SIZE];
-                // strncpy(client_id, ph->clientID, BUFFER_SIZE + 1);
-                // client_id[BUFFER_SIZE + 1] = '\0';
+                if(mphic->something_flags >> 7 ==1){
+                    strncpy(client_id, phic->clientID, BUFFER_SIZE + 1);
+                    client_id[BUFFER_SIZE + 1] = '\0';
+                }else{
+                    strcpy(client_id , "non client ID\0");
+                };
                 
                 pthread_mutex_lock(&clients_mutex);
                 handle_client_connect(client->socket_fd, client->client_addr, client_id);
@@ -225,14 +232,14 @@ void *handle_client(void *arg) {
                 client->client_id[BUFFER_SIZE - 1] = '\0';
                 pthread_mutex_unlock(&clients_mutex);
 
-            //     MQTT_fixed_header cfh;
-            //     unsigned char *return_connack_packet = return_connack(&cfh);
-            //     if (return_connack_packet == NULL) {
-            //         fprintf(stderr, "Error creating CONNACK packet\n");
-            //         close(client->socket_fd);
-            //         return NULL;
-            //     }
-            //     send_message_to_client(client->socket_fd, return_connack_packet, sizeof(MQTT_fixed_header));
+                MQTT_fixed_header cfh;
+                unsigned char *return_connack_packet = return_connack(&cfh);
+                if (return_connack_packet == NULL) {
+                    fprintf(stderr, "Error creating CONNACK packet\n");
+                    close(client->socket_fd);
+                    return NULL;
+                }
+                send_message_to_client(client->socket_fd, return_connack_packet, sizeof(MQTT_fixed_header));
                 break;
             }
     //         case 3: { // PUBLISH message

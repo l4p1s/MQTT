@@ -54,7 +54,7 @@ typedef struct {
     uint8_t protocol_name_length_MSB ; // 1byte
     uint8_t protocol_name_length_LSB ; // 1byte
     char protocol_name[0];  // 4byte
-}MQTT_payload_header_protocol_name;
+}MQTT_variable_header_protocol_name;
 
 typedef struct{
     uint8_t protocol_version; // 1byte
@@ -62,7 +62,7 @@ typedef struct{
     uint8_t keep_alive_timer_MSB ; // 1byte
     uint8_t keep_alive_timer_LSB ; // 1byte
  
-}MQTT_Variable_Header_in_connect;
+}MQTT_variable_Header_in_connect;
 
 typedef struct{
     uint8_t clientID_length_MSB;
