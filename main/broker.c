@@ -238,6 +238,7 @@ void *handle_client(void *arg) {
                     close(client->socket_fd);
                     return NULL;
                 }
+                print_bits("connack packet", return_connack_packet , sizeof(return_connack_packet));
                 send_message_to_client(client->socket_fd, return_connack_packet, sizeof(MQTT_fixed_header));
                 break;
             }

@@ -7,15 +7,29 @@
 #include <unistd.h>
 #include <arpa/inet.h>
 #include "encode.h"
-#include "../main/type_h.h"
+
+
 
 void setBit(unsigned char *ptr, int i) {
     if (i < 0 || i > 7) {
         perror("Error: bit index out of range\n");
         return;
     }
-    *ptr |= (1 << i);
+    *ptr |= (1 << i-1);
 }
+
+typedef struct {
+    // shiftして1つの変数にしたがいいと思う
+    uint8_t Control_Packet_type : 4;
+    uint8_t Flags : 4;
+    unsigned char Remaining_Length[0];
+}MQTT_fixed_header;
+
+typedef struct{
+    unsigned char no_flags[1];
+    unsigned char return_code[1];
+}MQTT_variable_header_in_connack;
+
 
 // unsigned char* return_suback(MQTT_fixed_header *fh) {
 //     printf("create suback message\n");
