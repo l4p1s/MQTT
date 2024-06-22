@@ -25,7 +25,7 @@ uint8_t return_str_LSB(uint16_t strlength);
 uint16_t combine_MSB_LSB(uint8_t msb, uint8_t lsb);
 unsigned char* encode_Remining_length(int length);
 unsigned int decode_remaining_length(unsigned char *encoded_bytes);
-unsigned char* return_connack(MQTT_fixed_header *fh);
+unsigned char* return_connack();
 unsigned char* return_suback(MQTT_fixed_header *fh);
 unsigned char* send_publish_command(MQTT_fixed_header *cfh);
 void print_struct_values(MQTT_fixed_header *fh, MQTT_variable_header_protocol_name *phpn, MQTT_variable_Header_in_connect *vh, MQTT_variable_Header_in_connect *ph);
@@ -232,8 +232,7 @@ void *handle_client(void *arg) {
                 client->client_id[BUFFER_SIZE - 1] = '\0';
                 pthread_mutex_unlock(&clients_mutex);
 
-                MQTT_fixed_header cfh;
-                unsigned char *return_connack_packet = return_connack(&cfh);
+                unsigned char *return_connack_packet = return_connack();
                 if (return_connack_packet == NULL) {
                     fprintf(stderr, "Error creating CONNACK packet\n");
                     close(client->socket_fd);
