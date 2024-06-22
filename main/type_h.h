@@ -49,6 +49,11 @@ typedef struct {
     unsigned char Remaining_Length[0];
 }MQTT_fixed_header;
 
+typedef struct{
+    unsigned char no_flags[1];
+    unsigned char return_code[1];
+}MQTT_variable_header_in_connack;
+
 typedef struct {
     // 2byteのshort intで定義して、シフト＆0x000000FFでマスク、　MSBとLSBに入れる。　
     uint8_t protocol_name_length_MSB ; // 1byte

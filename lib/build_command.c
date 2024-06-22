@@ -7,7 +7,7 @@
 #include <unistd.h>
 #include <arpa/inet.h>
 #include "encode.h"
-// #include "../main/type_h.h"
+#include "../main/type_h.h"
 
 void setBit(unsigned char *ptr, int i) {
     if (i < 0 || i > 7) {
