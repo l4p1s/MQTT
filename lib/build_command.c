@@ -30,22 +30,19 @@ typedef struct{
     unsigned char return_code[1];
 }MQTT_variable_header_in_connack;
 
+typedef struct{
+    uint8_t return_MESSAGE_ID_length_MSB;
+    uint8_t return_MESSAGE_ID_length_LSB;
+}MQTT_variable_header_in_subnack;
 
-// unsigned char* return_suback(MQTT_fixed_header *fh) {
-//     printf("create suback message\n");
-//     fh->Control_Packet_type = 0x09; // SUBACK
-//     unsigned char *FX_LENGTH = encode_Remining_length(FIXED_SIZE + sizeof(MQTT_payload_message_id_header_in_publish));
-//     if (FX_LENGTH == NULL) {
-//         return NULL;
-//     }
-//     memcpy(fh->Remaining_Length, FX_LENGTH, FIXED_SIZE);
-//     free(FX_LENGTH);
 
-//     MQTT_payload_message_id_header_in_publish *pmih  = (MQTT_payload_message_id_header_in_publish *)(fh + sizeof(MQTT_fixed_header));
-//     pmih->MESSAGE_ID_length_MSB = return_str_MSB(MESSAGE_ID_SIZE);
-//     pmih->MESSAGE_ID_length_LSB = return_str_LSB(MESSAGE_ID_SIZE);
-//     return (unsigned char *)fh;
-// }
+unsigned char* return_suback(uint8_t MESSAGE_ID_length_MSB , uint8_t MESSAGE_ID_length_LSB ){
+    printf("create suback message\n");
+    Packet_Length
+    unsigned char *subackack_packet;
+    suback_packet = (unsigned char *)malloc((sizeof(MQTT_fixed_header) + 1 + sizeof(MQTT_variable_header_in_subnack)));
+    return (unsigned char *)fh;
+}
 
 unsigned char* return_connack() {
     printf("create connack message\n");
