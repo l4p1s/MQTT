@@ -11,12 +11,13 @@
 
 
 void setBit(unsigned char *ptr, int i) {
-    if (i < 0 || i > 7) {
+    if (i < 1 || i > 8) {
         perror("Error: bit index out of range\n");
         return;
     }
-    *ptr |= (1 << i-1);
+    *ptr |= (1 << (i - 1));
 }
+
 
 typedef struct {
     // shiftして1つの変数にしたがいいと思う
@@ -35,13 +36,30 @@ typedef struct{
     uint8_t return_MESSAGE_ID_length_LSB;
 }MQTT_variable_header_in_subnack;
 
+typedef struct{
+    uint8_t MESSAGE_ID_length_MSB;
+    uint8_t MESSAGE_ID_length_LSB;
+}MQTT_payload_message_id_header;
 
-unsigned char* return_suback(uint8_t MESSAGE_ID_length_MSB , uint8_t MESSAGE_ID_length_LSB ){
+typedef struct{
+    uint8_t TOPIC_ID_length_MSB;
+    uint8_t TOPIC_ID_length_LSB;
+    char TOPICID[0];
+    uint8_t request_QoS_level;
+}MQTT_payload_topic_id_header_in_subscribe;
+
+unsigned char* return_suback(unsigned char* pmih , unsigned char* mptih ,int topic_count){
     printf("create suback message\n");
-    Packet_Length
-    unsigned char *subackack_packet;
-    suback_packet = (unsigned char *)malloc((sizeof(MQTT_fixed_header) + 1 + sizeof(MQTT_variable_header_in_subnack)));
-    return (unsigned char *)fh;
+    unsigned char *suback_packet;
+    suback_packet = (unsigned char *)malloc((sizeof(MQTT_fixed_header) + 1 + sizeof(MQTT_variable_header_in_subnack) + topic_count));
+    setBit(&suback_packet[0] , 8);
+    setBit(&suback_packet[0] , 5);
+    unsigned char* encoded_bytes = encode_Remining_length(sizeof(MQTT_variable_header_in_subnack) + topic_count);
+    strncpy(&suback_packet[1] , encoded_bytes , 1);
+    strncpy(&suback_packet[2] , pmih.MESSAGE_ID_length_MSB , 1);
+    strncpy(&suback_packet[3] , pmih.MESSAGE_ID_length_LSB , 1);
+    
+    return (unsigned char *)suback_packet;
 }
 
 unsigned char* return_connack() {

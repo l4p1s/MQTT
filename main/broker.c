@@ -252,8 +252,9 @@ void *handle_client(void *arg) {
                 MQTT_payload_message_id_header *pmih = (MQTT_payload_message_id_header *)(p + remaining_length_byte_count + 1 );
                 printf("message length  : %d\n", combine_MSB_LSB(pmih->MESSAGE_ID_length_MSB , pmih->MESSAGE_ID_length_LSB));
                 MQTT_payload_topic_id_header_in_subscribe *mptih = (MQTT_payload_topic_id_header_in_subscribe*)((char*)pmih + sizeof(MQTT_payload_message_id_header));
-                
+                int topic_count = 0;
                 while(mptih->TOPIC_ID_length_LSB > 0){
+                    topic_count++;
                     // print_binary(mptih->TOPIC_ID_length_LSB);
                     // printf("topic length  : %d\n", combine_MSB_LSB(mptih->TOPIC_ID_length_MSB , mptih->TOPIC_ID_length_LSB));
                     // printf("size of header  %ld\n", sizeof(MQTT_payload_topic_id_header_in_subscribe) + combine_MSB_LSB(mptih->TOPIC_ID_length_MSB , mptih->TOPIC_ID_length_LSB));
@@ -265,15 +266,15 @@ void *handle_client(void *arg) {
                     char *request_QoS_level = ((char*)mptih + sizeof(MQTT_payload_topic_id_header_in_subscribe) + combine_MSB_LSB(mptih->TOPIC_ID_length_MSB , mptih->TOPIC_ID_length_LSB) -1);
                     control_topic_subscriber(client->socket_fd, client->client_addr, mptih->TOPICID, (uint8_t)request_QoS_level[0] ,topic_length);
                     mptih = (MQTT_payload_topic_id_header_in_subscribe *)((uint8_t *)mptih + sizeof(MQTT_payload_topic_id_header_in_subscribe) + combine_MSB_LSB(mptih->TOPIC_ID_length_MSB , mptih->TOPIC_ID_length_LSB));
-
-                    unsigned char *return_suback_packet=return_suback();
+                }
+                    unsigned char *return_suback_packet=return_suback((unsigned char*)pmih,(unsigned char*)mptih , topic_count);
                     if (return_suback_packet == NULL) {
                         fprintf(stderr, "Error creating SUBNACK packet\n");
                         close(client->socket_fd);
                         return NULL;
                     }
-                    send_message_to_client(client->socket_fd, return_suback_packet, 1024);
-                }
+                    print_bits("suback packet" , return_suback_packet , (sizeof(MQTT_fixed_header) + 1 + sizeof(MQTT_variable_header_in_connack) + topic_count));
+                    // send_message_to_client(client->socket_fd, return_suback_packet, 1024);
                 // MQTT_payload_topic_id_header_in_subscribe *mptih = (MQTT_payload_topic_id_header_in_subscribe*)(fh + sizeof(MQTT_fixed_header) + sizeof(MQTT_payload_message_id_header_in_publish) + (remaining_length_/128) +1);
                 // printf("mptih->TOPICID  :  %s\n", mptih->TOPICID);
                 // control_topic_subscriber(client->socket_fd, client->client_addr, mptih->TOPICID, mptih->request_QoS_level ,combine_MSB_LSB(pmih->MESSAGE_ID_length_MSB , pmih->MESSAGE_ID_length_LSB));
