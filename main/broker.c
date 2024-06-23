@@ -26,7 +26,7 @@ uint16_t combine_MSB_LSB(uint8_t msb, uint8_t lsb);
 unsigned char* encode_Remining_length(int length);
 unsigned int decode_remaining_length(unsigned char *encoded_bytes);
 unsigned char* return_connack();
-unsigned char* return_suback(MQTT_fixed_header *fh);
+unsigned char* return_suback();
 unsigned char* send_publish_command(MQTT_fixed_header *cfh);
 void print_struct_values(MQTT_fixed_header *fh, MQTT_variable_header_protocol_name *phpn, MQTT_variable_Header_in_connect *vh, MQTT_variable_Header_in_connect *ph);
 void *handle_client(void *arg);
@@ -185,17 +185,15 @@ void *handle_client(void *arg) {
 
         unsigned char command_type = buffer[0] >> 4;
 
-        printf("command type : %d\n", command_type);
+        // printf("command type : %d\n", command_type);
 
-        print_bits("command type", &command_type , sizeof(command_type));
+        // print_bits("command type", &command_type , sizeof(command_type));
 
         print_bits("packet contents", (unsigned char *)buffer, valread);
 
         char *p = buffer;
+        int remaining_length_byte_count = 1;
         switch (command_type) {
-            case 1: { // CONNECT message
-                printf("CONNECT message received from client %d\n", client->id);
-                int remaining_length_byte_count = 0;
                 while(1){
                     if(buffer[remaining_length_byte_count + 1] >> 7 == 1){
                         remaining_length_byte_count +=1;
@@ -207,9 +205,12 @@ void *handle_client(void *arg) {
                 // printf("remaining_length_byte_count %d\n", remaining_length_byte_count);
                 memcpy(remaining_length_byte , &buffer[1] , remaining_length_byte_count+1);
                 Packet_Length = decode_remaining_length(remaining_length_byte);
+            case 1: { // CONNECT message
+                printf("CONNECT message received from client %d\n", client->id);
+
                 // printf("packet length : %d\n", Packet_Length);
         
-                MQTT_variable_header_protocol_name *phpn = (MQTT_variable_header_protocol_name*)(p + remaining_length_byte_count + 1 +1);
+                MQTT_variable_header_protocol_name *phpn = (MQTT_variable_header_protocol_name*)(p + remaining_length_byte_count + 1);
                 // printf("protocol_name_length_MSB : %d\n", phpn->protocol_name_length_MSB);
                 // printf("protocol_name_length_LSB : %d\n", phpn->protocol_name_length_LSB);
                 // printf("protocol name length  : %d\n", combine_MSB_LSB(phpn->protocol_name_length_MSB , phpn->protocol_name_length_LSB));
@@ -217,7 +218,7 @@ void *handle_client(void *arg) {
 
                 MQTT_variable_Header_in_connect *mphic = (MQTT_variable_Header_in_connect *)((char*)phpn + sizeof(MQTT_variable_header_protocol_name) + combine_MSB_LSB(phpn->protocol_name_length_MSB , phpn->protocol_name_length_LSB) );
                 MQTT_payload_header_in_connect *phic = (MQTT_payload_header_in_connect *)((char*) mphic + sizeof(MQTT_variable_Header_in_connect));
-                printf("protocol version : %d\n", mphic->protocol_version);
+                // printf("protocol version : %d\n", mphic->protocol_version);
                 char client_id[BUFFER_SIZE];
                 if(mphic->something_flags >> 7 ==1){
                     strncpy(client_id, phic->clientID, BUFFER_SIZE + 1);
@@ -238,30 +239,54 @@ void *handle_client(void *arg) {
                     close(client->socket_fd);
                     return NULL;
                 }
-                print_bits("connack packet", return_connack_packet , sizeof(return_connack_packet));
-                send_message_to_client(client->socket_fd, return_connack_packet, sizeof(MQTT_fixed_header));
+                send_message_to_client(client->socket_fd, return_connack_packet, sizeof(MQTT_fixed_header) + 1 + sizeof(MQTT_variable_header_in_connack));
                 break;
             }
-    //         case 3: { // PUBLISH message
-    //             printf("PUBLISH message received from client %d\n", client->id);
-    //             break;
-    //         }
-    //         case 8: {
-    //             MQTT_fixed_header cfh;
-    //             printf("SUBSCRIBE message received from client %d\n", client->id);
-    //             MQTT_payload_message_id_header_in_publish *pmih = (MQTT_payload_message_id_header_in_publish *)(fh + sizeof(MQTT_fixed_header) + (remaining_length_ /128)+1 );
-    //             MQTT_payload_topic_id_header_in_subscribe *mptih = (MQTT_payload_topic_id_header_in_subscribe*)(fh + sizeof(MQTT_fixed_header) + sizeof(MQTT_payload_message_id_header_in_publish) + (remaining_length_/128) +1);
-    //             printf("mptih->TOPICID  :  %s\n", mptih->TOPICID);
-    //             control_topic_subscriber(client->socket_fd, client->client_addr, mptih->TOPICID, mptih->request_QoS_level ,combine_MSB_LSB(pmih->MESSAGE_ID_length_MSB , pmih->MESSAGE_ID_length_LSB));
-    //             unsigned char *return_suback_packet=return_suback(&cfh);
-    //             if (return_suback_packet == NULL) {
-    //                 fprintf(stderr, "Error creating SUBNACK packet\n");
-    //                 close(client->socket_fd);
-    //                 return NULL;
-    //             }
-    //             send_message_to_client(client->socket_fd, return_suback_packet, 1024);
-    //             break;
-    //         }
+            case 3: { // PUBLISH message
+                printf("PUBLISH message received from client %d\n", client->id);
+                break;
+            }
+            case 248: {
+                printf("SUBSCRIBE message received from client %d\n", client->id);
+
+                MQTT_payload_message_id_header *pmih = (MQTT_payload_message_id_header *)(p + remaining_length_byte_count + 1 );
+                printf("message length  : %d\n", combine_MSB_LSB(pmih->MESSAGE_ID_length_MSB , pmih->MESSAGE_ID_length_LSB));
+                MQTT_payload_topic_id_header_in_subscribe *mptih = (MQTT_payload_topic_id_header_in_subscribe*)((char*)pmih + sizeof(MQTT_payload_message_id_header));
+                
+                while(mptih->TOPIC_ID_length_LSB > 0){
+                    // print_binary(mptih->TOPIC_ID_length_LSB);
+                    // printf("topic length  : %d\n", combine_MSB_LSB(mptih->TOPIC_ID_length_MSB , mptih->TOPIC_ID_length_LSB));
+                    // printf("size of header  %ld\n", sizeof(MQTT_payload_topic_id_header_in_subscribe) + combine_MSB_LSB(mptih->TOPIC_ID_length_MSB , mptih->TOPIC_ID_length_LSB));
+                    int topic_length = combine_MSB_LSB(mptih->TOPIC_ID_length_MSB , mptih->TOPIC_ID_length_LSB);
+                    // char topic[topic_length + 1];
+                    // memcpy(topic, mptih->TOPICID, topic_length);
+                    // topic[topic_length] = '\0';  // Ensure the topic string is null-terminated
+                    // // printf("topic         : %s\n", topic);
+                    char *request_QoS_level = ((char*)mptih + sizeof(MQTT_payload_topic_id_header_in_subscribe) + combine_MSB_LSB(mptih->TOPIC_ID_length_MSB , mptih->TOPIC_ID_length_LSB) -1);
+                    control_topic_subscriber(client->socket_fd, client->client_addr, mptih->TOPICID, (uint8_t)request_QoS_level[0] ,topic_length);
+                    mptih = (MQTT_payload_topic_id_header_in_subscribe *)((uint8_t *)mptih + sizeof(MQTT_payload_topic_id_header_in_subscribe) + combine_MSB_LSB(mptih->TOPIC_ID_length_MSB , mptih->TOPIC_ID_length_LSB));
+
+                    unsigned char *return_suback_packet=return_suback();
+                    if (return_suback_packet == NULL) {
+                        fprintf(stderr, "Error creating SUBNACK packet\n");
+                        close(client->socket_fd);
+                        return NULL;
+                    }
+                    send_message_to_client(client->socket_fd, return_suback_packet, 1024);
+                }
+                // MQTT_payload_topic_id_header_in_subscribe *mptih = (MQTT_payload_topic_id_header_in_subscribe*)(fh + sizeof(MQTT_fixed_header) + sizeof(MQTT_payload_message_id_header_in_publish) + (remaining_length_/128) +1);
+                // printf("mptih->TOPICID  :  %s\n", mptih->TOPICID);
+                // control_topic_subscriber(client->socket_fd, client->client_addr, mptih->TOPICID, mptih->request_QoS_level ,combine_MSB_LSB(pmih->MESSAGE_ID_length_MSB , pmih->MESSAGE_ID_length_LSB));
+                // unsigned char *return_suback_packet=return_suback(&cfh);
+                // if (return_suback_packet == NULL) {
+                //     fprintf(stderr, "Error creating SUBNACK packet\n");
+                //     close(client->socket_fd);
+                //     return NULL;
+                // }
+                // send_message_to_client(client->socket_fd, return_suback_packet, 1024);
+                printf("end topic\n");
+                break;
+            }
             default:
                 fprintf(stderr, "Unsupported Control Packet Type: %d\n", command_type);
                 continue;

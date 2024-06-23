@@ -50,7 +50,11 @@ typedef struct{
 unsigned char* return_connack() {
     printf("create connack message\n");
     unsigned char *connack_packet;
-    connack_packet = (unsigned char *)malloc(sizeof(MQTT_fixed_header) + 1 + sizeof(MQTT_variable_header_in_connack));
+    connack_packet = (unsigned char *)malloc((sizeof(MQTT_fixed_header) + 1 + sizeof(MQTT_variable_header_in_connack)));
+    // printf("size of fixed header  : %ld\n", sizeof(MQTT_fixed_header));
+    // printf("size of MQTT_variable_header_in_connack  : %ld\n", sizeof(MQTT_variable_header_in_connack));
+    // printf("size of connack packet  : %ld\n", sizeof(MQTT_fixed_header) + 1 + sizeof(MQTT_variable_header_in_connack));
+    // printf("size of connack packet  : %ld\n", sizeof(connack_packet));
     // メッセージタイプ2
     setBit(&connack_packet[0], 6);
     // remining length(固定長なので、直接)

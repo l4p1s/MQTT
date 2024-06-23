@@ -86,7 +86,7 @@ typedef struct{
 typedef struct{
     uint8_t TOPIC_ID_length_MSB;
     uint8_t TOPIC_ID_length_LSB;
-    char TOPICID[CLIENT_BUFFER_SIZE];
+    char TOPICID[0];
     uint8_t request_QoS_level;
 }MQTT_payload_topic_id_header_in_subscribe;
 
@@ -94,7 +94,7 @@ typedef struct{
 typedef struct{
     uint8_t MESSAGE_ID_length_MSB;
     uint8_t MESSAGE_ID_length_LSB;
-}MQTT_payload_message_id_header_in_publish;
+}MQTT_payload_message_id_header;
 
 
 typedef struct{
