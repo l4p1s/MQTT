@@ -17,6 +17,7 @@
 
 // Mutex for clients array
 pthread_mutex_t clients_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t subscribers_mutex = PTHREAD_MUTEX_INITIALIZER;
 int client_count = 0;
 
 // 関数プロトタイプ
@@ -171,6 +172,29 @@ void print_binary(unsigned char byte) {
     printf("\n");
 }
 
+void forward_publish_message_to_subscribers(char *topic, unsigned char *message, int message_length) {
+    
+    pthread_mutex_lock(&subscribers_mutex);
+    for (int i = 0; i < MAX_CLIENTS; ++i) {
+        if (subscriber_info[i].socket_fd_for_subscriber != -1) {
+            // trim(topic);
+            // print_hex("Topic", (unsigned char *)topic, strlen(topic) + 1);
+            // trim(subscriber_info[i].client_topic);
+            // print_hex("subscribe topic", (unsigned char *)subscriber_info[i].client_topic, strlen(subscriber_info[i].client_topic) + 1);
+            // printf("topic: %s (length: %zu)\n", topic, strlen(topic));
+            // printf("subscriber topic: %s (length: %zu)\n", subscriber_info[i].client_topic, strlen(subscriber_info[i].client_topic));
+            // printf("compare topic and subscriber topic: %d\n", strcmp(subscriber_info[i].client_topic, topic));
+
+            // トピック名の比較
+            if (strcmp(topic, subscriber_info[i].client_topic) == 0) {
+                printf("Forwarding PUBLISH message to subscriber on topic %s\n", topic);
+                send_message_to_client(subscriber_info[i].socket_fd_for_subscriber, message, message_length);
+            }
+        }
+    }
+    pthread_mutex_unlock(&subscribers_mutex);
+}
+
 void *handle_client(void *arg) {
     ClientInfo *client = (ClientInfo *)arg;
     char buffer[BUFFER_SIZE];
@@ -244,6 +268,21 @@ void *handle_client(void *arg) {
             }
             case 3: { // PUBLISH message
                 printf("PUBLISH message received from client %d\n", client->id);
+                MQTT_variable_topic_id_header_in_publish *vtihip = (MQTT_variable_topic_id_header_in_publish *)(p+remaining_length_byte_count +1);
+                int topic_length = combine_MSB_LSB(vtihip->TOPIC_ID_length_MSB , vtihip->TOPIC_ID_length_LSB);
+                printf("topic length : %d\n", combine_MSB_LSB(vtihip->TOPIC_ID_length_MSB , vtihip->TOPIC_ID_length_LSB));
+                char *cur_topic_id = (char *)malloc(topic_length + 1); // +1 for the null terminator
+                if (cur_topic_id == NULL) {
+                    perror("Memory allocation failed\n");
+                }
+                memcpy(cur_topic_id, vtihip->TOPICID, topic_length);
+                cur_topic_id[topic_length] = '\0'; // Null-terminate the string
+
+                printf("topic id : %s\n", cur_topic_id);
+
+                // Free the allocated memory
+                free(cur_topic_id);
+                forward_publish_message_to_subscribers(cur_topic_id, p, valread);
                 break;
             }
             case 248: {

@@ -9,13 +9,6 @@
 #define MAX_1BYTE_LENGTH 255
 #define CLIENTID "client1"
 
-#define FIXED_SIZE 2
-#define TOPIC_ID "abc"
-
-#define MESSAGE_ID "10"
-#define MESSAGE_ID_SIZE 2
-
-#define EXAMPLE_MASSAGE "Hello World\n"
 
 #define MAX_CLIENTS 100
 #define CLIENT_BUFFER_SIZE 24
@@ -81,7 +74,9 @@ typedef struct{
     uint8_t TOPIC_ID_length_MSB;
     uint8_t TOPIC_ID_length_LSB;
     char TOPICID[0];
-}MQTT_payload_topic_id_header_in_publish;
+    uint8_t MESSAGE_ID_length_MSB;
+    uint8_t MESSAGE_ID_length_LSB;
+}MQTT_variable_topic_id_header_in_publish;
 
 typedef struct{
     uint8_t TOPIC_ID_length_MSB;
