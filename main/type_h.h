@@ -96,6 +96,10 @@ typedef struct{
     uint8_t MESSAGE_ID_length_LSB;
 }MQTT_payload_message_id_header;
 
+typedef struct{
+    uint8_t return_MESSAGE_ID_length_MSB;
+    uint8_t return_MESSAGE_ID_length_LSB;
+}MQTT_variable_header_in_suback;
 
 typedef struct{
     char message[0];

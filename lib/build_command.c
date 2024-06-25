@@ -7,6 +7,11 @@
 #include <unistd.h>
 #include <arpa/inet.h>
 #include "encode.h"
+#include "build_command.h"
+#include "MSB_LSB.h"
+#include "lib_struct.h"
+
+
 
 
 
@@ -19,48 +24,33 @@ void setBit(unsigned char *ptr, int i) {
 }
 
 
-typedef struct {
-    // shiftして1つの変数にしたがいいと思う
-    uint8_t Control_Packet_type : 4;
-    uint8_t Flags : 4;
-    unsigned char Remaining_Length[0];
-}MQTT_fixed_header;
-
-typedef struct{
-    unsigned char no_flags[1];
-    unsigned char return_code[1];
-}MQTT_variable_header_in_connack;
-
-typedef struct{
-    uint8_t return_MESSAGE_ID_length_MSB;
-    uint8_t return_MESSAGE_ID_length_LSB;
-}MQTT_variable_header_in_subnack;
-
-typedef struct{
-    uint8_t MESSAGE_ID_length_MSB;
-    uint8_t MESSAGE_ID_length_LSB;
-}MQTT_payload_message_id_header;
-
-typedef struct{
-    uint8_t TOPIC_ID_length_MSB;
-    uint8_t TOPIC_ID_length_LSB;
-    char TOPICID[0];
-    uint8_t request_QoS_level;
-}MQTT_payload_topic_id_header_in_subscribe;
-
-unsigned char* return_suback(unsigned char* pmih , unsigned char* mptih ,int topic_count){
+unsigned char* return_suback(char* p, int topic_count, int remaining_length_byte_count) {
     printf("create suback message\n");
     unsigned char *suback_packet;
-    suback_packet = (unsigned char *)malloc((sizeof(MQTT_fixed_header) + 1 + sizeof(MQTT_variable_header_in_subnack) + topic_count));
-    setBit(&suback_packet[0] , 8);
-    setBit(&suback_packet[0] , 5);
-    unsigned char* encoded_bytes = encode_Remining_length(sizeof(MQTT_variable_header_in_subnack) + topic_count);
-    strncpy(&suback_packet[1] , encoded_bytes , 1);
-    strncpy(&suback_packet[2] , pmih.MESSAGE_ID_length_MSB , 1);
-    strncpy(&suback_packet[3] , pmih.MESSAGE_ID_length_LSB , 1);
+    suback_packet = (unsigned char *)malloc((sizeof(MQTT_fixed_header) + 1 + sizeof(MQTT_variable_header_in_suback) + topic_count));
+    setBit(&suback_packet[0], 8);
+    setBit(&suback_packet[0], 5);
+    printf("topic_count  : %d\n", topic_count);
+    unsigned char* encoded_bytes = encode_Remining_length(sizeof(MQTT_variable_header_in_suback) + topic_count);
+    MQTT_payload_message_id_header *pmih = (MQTT_payload_message_id_header *)(p + remaining_length_byte_count + 1);
+    
+    // Copying single bytes using assignment instead of strncpy
+    suback_packet[1] = encoded_bytes[0];
+    suback_packet[2] = pmih->MESSAGE_ID_length_MSB;
+    suback_packet[3] = pmih->MESSAGE_ID_length_LSB;
+    
+    MQTT_payload_topic_id_header_in_subscribe *mptih = (MQTT_payload_topic_id_header_in_subscribe*)((char*)pmih + sizeof(MQTT_payload_message_id_header));
+    for(int i = 1 ; i < topic_count + 1 ; i++){
+        int topic_length = combine_MSB_LSB(mptih->TOPIC_ID_length_MSB, mptih->TOPIC_ID_length_LSB);        
+        char *request_QoS_level = ((char*)mptih + sizeof(MQTT_payload_topic_id_header_in_subscribe) + topic_length - 1);
+        suback_packet[3 + i] = *request_QoS_level; // 修正箇所
+        mptih = (MQTT_payload_topic_id_header_in_subscribe *)((uint8_t *)mptih + sizeof(MQTT_payload_topic_id_header_in_subscribe) + topic_length);
+    }
     
     return (unsigned char *)suback_packet;
 }
+
+
 
 unsigned char* return_connack() {
     printf("create connack message\n");
