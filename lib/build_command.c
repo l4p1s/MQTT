@@ -66,3 +66,13 @@ unsigned char* return_connack() {
 
     return connack_packet;
 }
+
+unsigned char* return_pingresp(){
+    unsigned char *pingresp_packet;
+    pingresp_packet = (unsigned char *)malloc((sizeof(MQTT_fixed_header)));
+    setBit(&pingresp_packet[0], 8);
+    setBit(&pingresp_packet[0], 7);
+    setBit(&pingresp_packet[0], 5);
+
+    return pingresp_packet;
+}
