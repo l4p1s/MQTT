@@ -172,28 +172,23 @@ void print_binary(unsigned char byte) {
     printf("\n");
 }
 
-void forward_publish_message_to_subscribers(char *topic, unsigned char *message, int message_length) {
-    
+void forward_publish_message_to_subscribers(char *topic_, unsigned char *message, int message_length) {
+    printf("Forwarding function\n");
+    printf("Received topic: %s\n", topic_);
+    printf("Received topic length: %zu\n", strlen(topic_)); // Add this line
     pthread_mutex_lock(&subscribers_mutex);
+    print_bits("foward contents", message , message_length);
     for (int i = 0; i < MAX_CLIENTS; ++i) {
         if (subscriber_info[i].socket_fd_for_subscriber != -1) {
-            // trim(topic);
-            // print_hex("Topic", (unsigned char *)topic, strlen(topic) + 1);
-            // trim(subscriber_info[i].client_topic);
-            // print_hex("subscribe topic", (unsigned char *)subscriber_info[i].client_topic, strlen(subscriber_info[i].client_topic) + 1);
-            // printf("topic: %s (length: %zu)\n", topic, strlen(topic));
-            // printf("subscriber topic: %s (length: %zu)\n", subscriber_info[i].client_topic, strlen(subscriber_info[i].client_topic));
-            // printf("compare topic and subscriber topic: %d\n", strcmp(subscriber_info[i].client_topic, topic));
-
-            // トピック名の比較
-            if (strcmp(topic, subscriber_info[i].client_topic) == 0) {
-                printf("Forwarding PUBLISH message to subscriber on topic %s\n", topic);
+            if (strcmp(topic_, subscriber_info[i].client_topic) == 0) {
+                printf("Forwarding PUBLISH message to subscriber on topic %s\n", topic_);
                 send_message_to_client(subscriber_info[i].socket_fd_for_subscriber, message, message_length);
             }
         }
     }
     pthread_mutex_unlock(&subscribers_mutex);
 }
+
 
 void *handle_client(void *arg) {
     ClientInfo *client = (ClientInfo *)arg;
@@ -235,14 +230,10 @@ void *handle_client(void *arg) {
                 // printf("packet length : %d\n", Packet_Length);
         
                 MQTT_variable_header_protocol_name *phpn = (MQTT_variable_header_protocol_name*)(p + remaining_length_byte_count + 1);
-                // printf("protocol_name_length_MSB : %d\n", phpn->protocol_name_length_MSB);
-                // printf("protocol_name_length_LSB : %d\n", phpn->protocol_name_length_LSB);
-                // printf("protocol name length  : %d\n", combine_MSB_LSB(phpn->protocol_name_length_MSB , phpn->protocol_name_length_LSB));
-                // printf("protocol name  : %s\n", phpn->protocol_name);
 
                 MQTT_variable_Header_in_connect *mphic = (MQTT_variable_Header_in_connect *)((char*)phpn + sizeof(MQTT_variable_header_protocol_name) + combine_MSB_LSB(phpn->protocol_name_length_MSB , phpn->protocol_name_length_LSB) );
                 MQTT_payload_header_in_connect *phic = (MQTT_payload_header_in_connect *)((char*) mphic + sizeof(MQTT_variable_Header_in_connect));
-                // printf("protocol version : %d\n", mphic->protocol_version);
+
                 char client_id[BUFFER_SIZE];
                 if(mphic->something_flags >> 7 ==1){
                     strncpy(client_id, phic->clientID, BUFFER_SIZE + 1);
@@ -270,19 +261,17 @@ void *handle_client(void *arg) {
                 printf("PUBLISH message received from client %d\n", client->id);
                 MQTT_variable_topic_id_header_in_publish *vtihip = (MQTT_variable_topic_id_header_in_publish *)(p+remaining_length_byte_count +1);
                 int topic_length = combine_MSB_LSB(vtihip->TOPIC_ID_length_MSB , vtihip->TOPIC_ID_length_LSB);
-                printf("topic length : %d\n", combine_MSB_LSB(vtihip->TOPIC_ID_length_MSB , vtihip->TOPIC_ID_length_LSB));
-                char *cur_topic_id = (char *)malloc(topic_length + 1); // +1 for the null terminator
+                printf("topic length : %d\n", topic_length);
+                char *cur_topic_id = (char *)malloc(topic_length);
                 if (cur_topic_id == NULL) {
                     perror("Memory allocation failed\n");
                 }
                 memcpy(cur_topic_id, vtihip->TOPICID, topic_length);
-                cur_topic_id[topic_length] = '\0'; // Null-terminate the string
 
                 printf("topic id : %s\n", cur_topic_id);
-
-                // Free the allocated memory
-                free(cur_topic_id);
+                
                 forward_publish_message_to_subscribers(cur_topic_id, p, valread);
+                free(cur_topic_id);
                 break;
             }
             case 248: {
@@ -306,7 +295,6 @@ void *handle_client(void *arg) {
                         break;
                     }
                 }
-                // After processing all topics, generate SUBACK packet
                 unsigned char *return_suback_packet = return_suback(p , topic_count , remaining_length_byte_count);
                 if (return_suback_packet == NULL) {
                     fprintf(stderr, "Error creating SUBNACK packet\n");
@@ -314,18 +302,11 @@ void *handle_client(void *arg) {
                     return NULL;
                 }
                     print_bits("suback packet" , return_suback_packet , sizeof(MQTT_fixed_header) + 1 + sizeof(MQTT_variable_header_in_suback) + topic_count);
-                    // send_message_to_client(client->socket_fd, return_suback_packet, 1024);
-                // MQTT_payload_topic_id_header_in_subscribe *mptih = (MQTT_payload_topic_id_header_in_subscribe*)(fh + sizeof(MQTT_fixed_header) + sizeof(MQTT_payload_message_id_header_in_publish) + (remaining_length_/128) +1);
-                // printf("mptih->TOPICID  :  %s\n", mptih->TOPICID);
-                // control_topic_subscriber(client->socket_fd, client->client_addr, mptih->TOPICID, mptih->request_QoS_level ,combine_MSB_LSB(pmih->MESSAGE_ID_length_MSB , pmih->MESSAGE_ID_length_LSB));
-                // unsigned char *return_suback_packet=return_suback(&cfh);
-                // if (return_suback_packet == NULL) {
-                //     fprintf(stderr, "Error creating SUBNACK packet\n");
-                //     close(client->socket_fd);
-                //     return NULL;
-                // }
-                // send_message_to_client(client->socket_fd, return_suback_packet, 1024);
                 printf("end topic\n");
+                break;
+            }
+            case 254 : {
+                printf("disconnect\n");
                 break;
             }
             default:
