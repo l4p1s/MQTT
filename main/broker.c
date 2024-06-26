@@ -204,10 +204,6 @@ void *handle_client(void *arg) {
 
         unsigned char command_type = buffer[0] >> 4;
 
-        // printf("command type : %d\n", command_type);
-
-        // print_bits("command type", &command_type , sizeof(command_type));
-
         print_bits("packet contents", (unsigned char *)buffer, valread);
 
         char *p = buffer;
@@ -220,14 +216,10 @@ void *handle_client(void *arg) {
                         break;
                     }
                 }
-                // printf("before\n");
-                // printf("remaining_length_byte_count %d\n", remaining_length_byte_count);
                 memcpy(remaining_length_byte , &buffer[1] , remaining_length_byte_count+1);
                 Packet_Length = decode_remaining_length(remaining_length_byte);
             case 1: { // CONNECT message
                 printf("CONNECT message received from client %d\n", client->id);
-
-                // printf("packet length : %d\n", Packet_Length);
         
                 MQTT_variable_header_protocol_name *phpn = (MQTT_variable_header_protocol_name*)(p + remaining_length_byte_count + 1);
 
