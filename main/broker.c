@@ -125,7 +125,7 @@ int main() {
     }
 
     // リスンを開始
-    if (listen(server_fd, 3) < 0) {
+    if (listen(server_fd, 100) < 0) {
         perror("listen failed");
         close(server_fd);
         exit(EXIT_FAILURE);
@@ -177,6 +177,7 @@ void forward_publish_message_to_subscribers(char *topic_, unsigned char *message
     printf("Forwarding function\n");
     printf("Received topic: %s\n", topic_);
     printf("Received topic length: %zu\n", strlen(topic_));
+    printf("mssage length : %d\n", message_length);
     pthread_mutex_lock(&subscribers_mutex);
     print_bits("forward contents", message, message_length);
     for (int i = 0; i < MAX_CLIENTS; ++i) {
@@ -196,7 +197,7 @@ void *handle_client(void *arg) {
     char buffer[BUFFER_SIZE];
     int valread;
     char remaining_length_byte[4]; 
-    int Packet_Length =0;
+    int Packet_Length = 0;
     printf("Client %d connected\n", client->id);
 
     while ((valread = read(client->socket_fd, buffer, BUFFER_SIZE)) > 0) {
@@ -317,6 +318,5 @@ void *handle_client(void *arg) {
                 continue;
         }
     }
-
     return NULL;
 }
