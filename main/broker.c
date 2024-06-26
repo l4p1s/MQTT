@@ -176,9 +176,9 @@ void print_binary(unsigned char byte) {
 void forward_publish_message_to_subscribers(char *topic_, unsigned char *message, int message_length) {
     printf("Forwarding function\n");
     printf("Received topic: %s\n", topic_);
-    printf("Received topic length: %zu\n", strlen(topic_)); // Add this line
+    printf("Received topic length: %zu\n", strlen(topic_));
     pthread_mutex_lock(&subscribers_mutex);
-    print_bits("foward contents", message , message_length);
+    print_bits("forward contents", message, message_length);
     for (int i = 0; i < MAX_CLIENTS; ++i) {
         if (subscriber_info[i].socket_fd_for_subscriber != -1) {
             if (strcmp(topic_, subscriber_info[i].client_topic) == 0) {
@@ -299,26 +299,24 @@ void *handle_client(void *arg) {
                 break;
             }
             case 254 : {
-                printf("disconnect\n");
+                printf("Client %d disconnected\n", client->id);
+                pthread_mutex_lock(&clients_mutex);
+                clients[client->id].socket_fd = -1;
+                pthread_mutex_unlock(&clients_mutex);
+                close(client->socket_fd);
                 break;
             }
             case 252 : {
                 printf("recieve ping\n");
                 unsigned char *return_pingresp_packet = return_pingresp();
                 send_message_to_client(client->socket_fd, return_pingresp_packet, sizeof(MQTT_fixed_header));
+                break;
             }
             default:
                 fprintf(stderr, "Unsupported Control Packet Type: %d\n", command_type);
                 continue;
         }
     }
-
-    close(client->socket_fd);
-    printf("Client %d disconnected\n", client->id);
-
-    pthread_mutex_lock(&clients_mutex);
-    clients[client->id].socket_fd = -1;
-    pthread_mutex_unlock(&clients_mutex);
 
     return NULL;
 }
