@@ -22,6 +22,10 @@ PUBLISH
 めちゃくちゃ詳しく書かれてる
 [Init 1](https://codepr.github.io/posts/sol-mqtt-broker/)
 
+各レベルのメッセージのフロー
+
+[MQTT QoS 0、1、2 のクイックスタート | EMQ](https://www.emqx.com/ja/blog/introduction-to-mqtt-qos)
+
 
 任意のヘッダーファイルのコンパイル方法
 

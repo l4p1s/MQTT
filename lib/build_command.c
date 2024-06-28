@@ -56,13 +56,27 @@ unsigned char* return_connack() {
     printf("create connack message\n");
     unsigned char *connack_packet;
     connack_packet = (unsigned char *)malloc((sizeof(MQTT_fixed_header) + 1 + sizeof(MQTT_variable_header_in_connack)));
+    if (connack_packet == NULL) {
+        perror("メモリ確保にしっぱい\n");
+        return NULL;
+    }
     // メッセージタイプ2
     setBit(&connack_packet[0], 6);
     // remining length(固定長なので、直接)
     setBit(&connack_packet[1], 2);
     //接続許可のフラグ
     MQTT_variable_header_in_connack *mvhic = (MQTT_variable_header_in_connack*)((unsigned char*)connack_packet + sizeof(MQTT_fixed_header));
-    memset(mvhic->return_code , 0 , sizeof(mvhic->return_code));
+    // memset(mvhic->return_code , 0 , sizeof(mvhic->return_code));
 
     return connack_packet;
+}
+
+unsigned char* return_pingresp(){
+    unsigned char *pingresp_packet;
+    pingresp_packet = (unsigned char *)malloc((sizeof(MQTT_fixed_header)));
+    setBit(&pingresp_packet[0], 8);
+    setBit(&pingresp_packet[0], 7);
+    setBit(&pingresp_packet[0], 5);
+
+    return pingresp_packet;
 }

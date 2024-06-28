@@ -27,6 +27,7 @@ uint16_t combine_MSB_LSB(uint8_t msb, uint8_t lsb);
 unsigned char* encode_Remining_length(int length);
 unsigned int decode_remaining_length(unsigned char *encoded_bytes);
 unsigned char* return_connack();
+unsigned char* return_pingresp();
 unsigned char* return_suback(char *p , int topic_count , int remaining_length_byte_count);
 unsigned char* send_publish_command(MQTT_fixed_header *cfh);
 void print_struct_values(MQTT_fixed_header *fh, MQTT_variable_header_protocol_name *phpn, MQTT_variable_Header_in_connect *vh, MQTT_variable_Header_in_connect *ph);
@@ -124,7 +125,7 @@ int main() {
     }
 
     // リスンを開始
-    if (listen(server_fd, 3) < 0) {
+    if (listen(server_fd, 100) < 0) {
         perror("listen failed");
         close(server_fd);
         exit(EXIT_FAILURE);
@@ -172,17 +173,19 @@ void print_binary(unsigned char byte) {
     printf("\n");
 }
 
+
 void forward_publish_message_to_subscribers(char *topic_, unsigned char *message, int message_length) {
     printf("Forwarding function\n");
     printf("Received topic: %s\n", topic_);
-    printf("Received topic length: %zu\n", strlen(topic_)); // Add this line
+    printf("Received topic length: %zu\n", strlen(topic_));
+    printf("mssage length : %d\n", message_length);
     pthread_mutex_lock(&subscribers_mutex);
-    print_bits("foward contents", message , message_length);
+    print_bits("forward contents", message, message_length);
     for (int i = 0; i < MAX_CLIENTS; ++i) {
         if (subscriber_info[i].socket_fd_for_subscriber != -1) {
             if (strcmp(topic_, subscriber_info[i].client_topic) == 0) {
                 printf("Forwarding PUBLISH message to subscriber on topic %s\n", topic_);
-                send_message_to_client(subscriber_info[i].socket_fd_for_subscriber, message, message_length);
+                send_message_to_client(subscriber_info[i].socket_fd_for_subscriber, message, message_length );
             }
         }
     }
@@ -192,10 +195,11 @@ void forward_publish_message_to_subscribers(char *topic_, unsigned char *message
 
 void *handle_client(void *arg) {
     ClientInfo *client = (ClientInfo *)arg;
-    char buffer[BUFFER_SIZE];
+    char *buffer;
+    buffer = (char *)malloc(BUFFER_SIZE);
     int valread;
     char remaining_length_byte[4]; 
-    int Packet_Length =0;
+    int Packet_Length = 0;
     printf("Client %d connected\n", client->id);
 
     while ((valread = read(client->socket_fd, buffer, BUFFER_SIZE)) > 0) {
@@ -205,6 +209,7 @@ void *handle_client(void *arg) {
         unsigned char command_type = buffer[0] >> 4;
 
         print_bits("packet contents", (unsigned char *)buffer, valread);
+        // printf("recieved fd  : %d\n", client->socket_fd);
 
         char *p = buffer;
         int remaining_length_byte_count = 1;
@@ -246,6 +251,8 @@ void *handle_client(void *arg) {
                     close(client->socket_fd);
                     return NULL;
                 }
+                print_bits("conack packet contents", return_connack_packet , sizeof(MQTT_fixed_header) + 1 + sizeof(MQTT_variable_header_in_connack));
+                // printf("connack socket_fd  : %d\n", client->socket_fd);
                 send_message_to_client(client->socket_fd, return_connack_packet, sizeof(MQTT_fixed_header) + 1 + sizeof(MQTT_variable_header_in_connack));
                 break;
             }
@@ -261,8 +268,11 @@ void *handle_client(void *arg) {
                 memcpy(cur_topic_id, vtihip->TOPICID, topic_length);
 
                 printf("topic id : %s\n", cur_topic_id);
-                
-                forward_publish_message_to_subscribers(cur_topic_id, p, valread);
+                printf("packet length  : %d\n" ,valread);
+                // char * strip_packet =  (char *)malloc(valread - 2);
+                // strncpy(strip_packet , p , valread - 2);
+                // delite Disconnect Req
+                forward_publish_message_to_subscribers(cur_topic_id, p , valread - 2);
                 free(cur_topic_id);
                 break;
             }
@@ -293,12 +303,23 @@ void *handle_client(void *arg) {
                     close(client->socket_fd);
                     return NULL;
                 }
-                    print_bits("suback packet" , return_suback_packet , sizeof(MQTT_fixed_header) + 1 + sizeof(MQTT_variable_header_in_suback) + topic_count);
+                print_bits("suback packet" , return_suback_packet , sizeof(MQTT_fixed_header) + 1 + sizeof(MQTT_variable_header_in_suback) + topic_count);
                 printf("end topic\n");
+                send_message_to_client(client->socket_fd, return_suback_packet, (sizeof(MQTT_fixed_header) + 1 + sizeof(MQTT_variable_header_in_suback) + topic_count));
                 break;
             }
             case 254 : {
-                printf("disconnect\n");
+                printf("Client %d disconnected\n", client->id);
+                pthread_mutex_lock(&clients_mutex);
+                clients[client->id].socket_fd = -1;
+                pthread_mutex_unlock(&clients_mutex);
+                // close(client->socket_fd);
+                break;
+            }
+            case 252 : {
+                printf("recieve ping\n");
+                unsigned char *return_pingresp_packet = return_pingresp();
+                send_message_to_client(client->socket_fd, return_pingresp_packet, sizeof(MQTT_fixed_header));
                 break;
             }
             default:
@@ -306,13 +327,7 @@ void *handle_client(void *arg) {
                 continue;
         }
     }
-
     close(client->socket_fd);
-    printf("Client %d disconnected\n", client->id);
-
-    pthread_mutex_lock(&clients_mutex);
-    clients[client->id].socket_fd = -1;
-    pthread_mutex_unlock(&clients_mutex);
-
+    free(buffer);
     return NULL;
 }

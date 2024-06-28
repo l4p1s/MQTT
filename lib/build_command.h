@@ -3,6 +3,8 @@
  
 unsigned char* return_suback(char *p , int topic_count , int remaining_length_byte_count);
 unsigned char* return_connack();
+unsigned char* return_pingresp();
+
  
 
 
