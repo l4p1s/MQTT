@@ -195,7 +195,8 @@ void forward_publish_message_to_subscribers(char *topic_, unsigned char *message
 
 void *handle_client(void *arg) {
     ClientInfo *client = (ClientInfo *)arg;
-    char buffer[BUFFER_SIZE];
+    char *buffer;
+    buffer = (char *)malloc(BUFFER_SIZE);
     int valread;
     char remaining_length_byte[4]; 
     int Packet_Length = 0;
@@ -304,6 +305,7 @@ void *handle_client(void *arg) {
                 }
                 print_bits("suback packet" , return_suback_packet , sizeof(MQTT_fixed_header) + 1 + sizeof(MQTT_variable_header_in_suback) + topic_count);
                 printf("end topic\n");
+                send_message_to_client(client->socket_fd, return_suback_packet, (sizeof(MQTT_fixed_header) + 1 + sizeof(MQTT_variable_header_in_suback) + topic_count));
                 break;
             }
             case 254 : {
@@ -326,5 +328,6 @@ void *handle_client(void *arg) {
         }
     }
     close(client->socket_fd);
+    free(buffer);
     return NULL;
 }

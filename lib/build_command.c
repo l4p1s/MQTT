@@ -56,6 +56,10 @@ unsigned char* return_connack() {
     printf("create connack message\n");
     unsigned char *connack_packet;
     connack_packet = (unsigned char *)malloc((sizeof(MQTT_fixed_header) + 1 + sizeof(MQTT_variable_header_in_connack)));
+    if (connack_packet == NULL) {
+        perror("メモリ確保にしっぱい\n");
+        return NULL;
+    }
     // メッセージタイプ2
     setBit(&connack_packet[0], 6);
     // remining length(固定長なので、直接)
