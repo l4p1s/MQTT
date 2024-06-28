@@ -195,7 +195,8 @@ void forward_publish_message_to_subscribers(char *topic_, unsigned char *message
 
 void *handle_client(void *arg) {
     ClientInfo *client = (ClientInfo *)arg;
-    char buffer[BUFFER_SIZE];
+    char *buffer;
+    buffer = (char *)malloc(BUFFER_SIZE);
     int valread;
     char remaining_length_byte[4]; 
     int Packet_Length = 0;
@@ -304,6 +305,7 @@ void *handle_client(void *arg) {
                 }
                 print_bits("suback packet" , return_suback_packet , sizeof(MQTT_fixed_header) + 1 + sizeof(MQTT_variable_header_in_suback) + topic_count);
                 printf("end topic\n");
+                send_message_to_client(client->socket_fd, return_suback_packet, (sizeof(MQTT_fixed_header) + 1 + sizeof(MQTT_variable_header_in_suback) + topic_count));
                 break;
             }
             case 254 : {
@@ -311,13 +313,14 @@ void *handle_client(void *arg) {
                 pthread_mutex_lock(&clients_mutex);
                 clients[client->id].socket_fd = -1;
                 pthread_mutex_unlock(&clients_mutex);
-                // close(client->socket_fd);
+                close(client->socket_fd);
                 break;
             }
             case 252 : {
                 printf("recieve ping\n");
                 unsigned char *return_pingresp_packet = return_pingresp();
                 send_message_to_client(client->socket_fd, return_pingresp_packet, sizeof(MQTT_fixed_header));
+                free(return_pingresp_packet);
                 break;
             }
             default:
@@ -326,5 +329,6 @@ void *handle_client(void *arg) {
         }
     }
     close(client->socket_fd);
+    free(buffer);
     return NULL;
 }

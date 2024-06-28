@@ -16,6 +16,7 @@ void print_bits2(const char *label, const unsigned char *data, int length) {
 
 void send_message_to_client(int socket_fd, unsigned char *message, int message_length) {
     print_bits2("send packet contents" , message , message_length);
+    printf("message send length  : %d\n", message_length);
     if (send(socket_fd, message, message_length, 0) < 0) {
         printf("ERROR writing to socket");
     }else{
