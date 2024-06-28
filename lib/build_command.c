@@ -62,7 +62,7 @@ unsigned char* return_connack() {
     setBit(&connack_packet[1], 2);
     //接続許可のフラグ
     MQTT_variable_header_in_connack *mvhic = (MQTT_variable_header_in_connack*)((unsigned char*)connack_packet + sizeof(MQTT_fixed_header));
-    memset(mvhic->return_code , 0 , sizeof(mvhic->return_code));
+    // memset(mvhic->return_code , 0 , sizeof(mvhic->return_code));
 
     return connack_packet;
 }

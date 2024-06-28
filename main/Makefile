@@ -2,7 +2,7 @@
 CC = gcc
 
 # コンパイルオプション
-CFLAGS = -I../lib
+CFLAGS = -I../lib -g
 
 # ソースファイル
 SRCS = ../lib/build_command.c ../lib/encode.c ../lib/decode.c ../lib/MSB_LSB.c ../lib/send_message.c broker.c
