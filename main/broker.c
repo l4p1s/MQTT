@@ -20,24 +20,6 @@ pthread_mutex_t clients_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t subscribers_mutex = PTHREAD_MUTEX_INITIALIZER;
 int client_count = 0;
 
-// 関数プロトタイプ
-uint8_t return_str_MSB(uint16_t strlength);
-uint8_t return_str_LSB(uint16_t strlength);
-uint16_t combine_MSB_LSB(uint8_t msb, uint8_t lsb);
-unsigned char* encode_Remining_length(int length);
-unsigned int decode_remaining_length(unsigned char *encoded_bytes);
-unsigned char* return_connack();
-unsigned char* return_pingresp();
-unsigned char* return_suback(char *p , int topic_count , int remaining_length_byte_count);
-unsigned char* send_publish_command(MQTT_fixed_header *cfh);
-void print_struct_values(MQTT_fixed_header *fh, MQTT_variable_header_protocol_name *phpn, MQTT_variable_Header_in_connect *vh, MQTT_variable_Header_in_connect *ph);
-void *handle_client(void *arg);
-void handle_client_connect(int socket_fd, struct sockaddr_in client_addr, char *client_id);
-void handle_client_disconnect(int socket_fd);
-void send_message_to_client(int socket_fd, unsigned char *message, int message_length);
-void control_topic_subscriber(int socket_fd, struct sockaddr_in client_addr, char *TOPICID , uint8_t request_QoS_level , int message_id);
-void unsubscribe_topic(int socket_fd , char *TOPICID);
-void init_subscriber_info();
 
 void control_topic_subscriber(int socket_fd, struct sockaddr_in client_addr, char *TOPICID , uint8_t request_QoS_level , int message_id){
     for(int i=0 ; i < MAX_CLIENTS ; i++){
@@ -66,7 +48,7 @@ void handle_client_connect(int socket_fd, struct sockaddr_in client_addr, char *
         if (clients[i].socket_fd == -1) { // 空いているスロットを見つける
             clients[i].socket_fd = socket_fd;
             clients[i].client_addr = client_addr;
-            strncpy(clients[i].client_id, client_id, BUFFER_SIZE - 1);
+            memcpy(clients[i].client_id, client_id, BUFFER_SIZE - 1);
             clients[i].client_id[BUFFER_SIZE - 1] = '\0'; // 念のためNULL終端
             break;
         }
@@ -202,28 +184,57 @@ void *handle_client(void *arg) {
     int Packet_Length = 0;
     printf("Client %d connected\n", client->id);
 
+    int total_read_packet_size = 0 ;
+
     while ((valread = read(client->socket_fd, buffer, BUFFER_SIZE)) > 0) {
+
+        total_read_packet_size += valread;
+        printf("total packet read  : %d\n", total_read_packet_size);
+
+        int remaining_length_byte_count = 1;
+        while(1){
+            if(buffer[remaining_length_byte_count + 1] >> 7 == 1){
+                remaining_length_byte_count +=1;
+            }else{
+                break;
+            }
+        }
+
+        memcpy(remaining_length_byte , &buffer[1] , remaining_length_byte_count+1);
+        Packet_Length = decode_remaining_length(remaining_length_byte);
+
+        printf("packet length  : %d\n", Packet_Length);
+        // whileとforどっちがいいんだろう
+        while(total_read_packet_size <= Packet_Length + sizeof(MQTT_fixed_header)){
+            valread = read(client->socket_fd, buffer + total_read_packet_size, BUFFER_SIZE - total_read_packet_size);
+            total_read_packet_size += valread;
+            printf("total read packet length  : %d\n", total_read_packet_size);
+        }
+
         buffer[valread] = '\0';
         printf("Received message from client %d: %d bytes\n", client->id, valread);
 
         unsigned char command_type = buffer[0] >> 4;
 
+        COMMAND_TYPE ctype = (unsigned int)command_type;
+
         print_bits("packet contents", (unsigned char *)buffer, valread);
         // printf("recieved fd  : %d\n", client->socket_fd);
 
         char *p = buffer;
-        int remaining_length_byte_count = 1;
-        switch (command_type) {
-                while(1){
-                    if(buffer[remaining_length_byte_count + 1] >> 7 == 1){
-                        remaining_length_byte_count +=1;
-                    }else{
-                        break;
-                    }
-                }
-                memcpy(remaining_length_byte , &buffer[1] , remaining_length_byte_count+1);
-                Packet_Length = decode_remaining_length(remaining_length_byte);
-            case 1: { // CONNECT message
+        // int remaining_length_byte_count = 1;
+        // while(1){
+        //             if(buffer[remaining_length_byte_count + 1] >> 7 == 1){
+        //                 remaining_length_byte_count +=1;
+        //             }else{
+        //                 break;
+        //             }
+        //         }
+        //         memcpy(remaining_length_byte , &buffer[1] , remaining_length_byte_count+1);
+        //         Packet_Length = decode_remaining_length(remaining_length_byte);
+
+        switch (ctype) {
+            case CONNECT: { // CONNECT message
                 printf("CONNECT message received from client %d\n", client->id);
         
                 MQTT_variable_header_protocol_name *phpn = (MQTT_variable_header_protocol_name*)(p + remaining_length_byte_count + 1);
@@ -233,7 +244,7 @@ void *handle_client(void *arg) {
 
                 char client_id[BUFFER_SIZE];
                 if(mphic->something_flags >> 7 ==1){
-                    strncpy(client_id, phic->clientID, BUFFER_SIZE + 1);
+                    memcpy(client_id, phic->clientID, BUFFER_SIZE + 1);
                     client_id[BUFFER_SIZE + 1] = '\0';
                 }else{
                     strcpy(client_id , "non client ID\0");
@@ -241,7 +252,7 @@ void *handle_client(void *arg) {
                 
                 pthread_mutex_lock(&clients_mutex);
                 handle_client_connect(client->socket_fd, client->client_addr, client_id);
-                strncpy(client->client_id, client_id, BUFFER_SIZE - 1);
+                memcpy(client->client_id, client_id, BUFFER_SIZE - 1);
                 client->client_id[BUFFER_SIZE - 1] = '\0';
                 pthread_mutex_unlock(&clients_mutex);
 
@@ -256,7 +267,7 @@ void *handle_client(void *arg) {
                 send_message_to_client(client->socket_fd, return_connack_packet, sizeof(MQTT_fixed_header) + 1 + sizeof(MQTT_variable_header_in_connack));
                 break;
             }
-            case 3: { // PUBLISH message
+            case PUBLISH: { // PUBLISH message
                 printf("PUBLISH message received from client %d\n", client->id);
                 MQTT_variable_topic_id_header_in_publish *vtihip = (MQTT_variable_topic_id_header_in_publish *)(p+remaining_length_byte_count +1);
                 int topic_length = combine_MSB_LSB(vtihip->TOPIC_ID_length_MSB , vtihip->TOPIC_ID_length_LSB);
@@ -270,13 +281,13 @@ void *handle_client(void *arg) {
                 printf("topic id : %s\n", cur_topic_id);
                 printf("packet length  : %d\n" ,valread);
                 // char * strip_packet =  (char *)malloc(valread - 2);
-                // strncpy(strip_packet , p , valread - 2);
+                // memcpy(strip_packet , p , valread - 2);
                 // delite Disconnect Req
                 forward_publish_message_to_subscribers(cur_topic_id, p , valread - 2);
                 free(cur_topic_id);
                 break;
             }
-            case 248: {
+            case SUBSCRIBE : {
                 printf("SUBSCRIBE message received from client %d\n", client->id);
 
                 MQTT_payload_message_id_header *pmih = (MQTT_payload_message_id_header *)(p + remaining_length_byte_count + 1 );
@@ -308,7 +319,7 @@ void *handle_client(void *arg) {
                 send_message_to_client(client->socket_fd, return_suback_packet, (sizeof(MQTT_fixed_header) + 1 + sizeof(MQTT_variable_header_in_suback) + topic_count));
                 break;
             }
-            case 254 : {
+            case DISCONNECT : {
                 printf("Client %d disconnected\n", client->id);
                 pthread_mutex_lock(&clients_mutex);
                 clients[client->id].socket_fd = -1;
@@ -316,7 +327,7 @@ void *handle_client(void *arg) {
                 close(client->socket_fd);
                 break;
             }
-            case 252 : {
+            case PING : {
                 printf("recieve ping\n");
                 unsigned char *return_pingresp_packet = return_pingresp();
                 send_message_to_client(client->socket_fd, return_pingresp_packet, sizeof(MQTT_fixed_header));
@@ -324,8 +335,8 @@ void *handle_client(void *arg) {
                 break;
             }
             default:
-                fprintf(stderr, "Unsupported Control Packet Type: %d\n", command_type);
-                continue;
+                fprintf(stderr, "Unsupported Control Packet Type: %d\n", ctype);
+                break;
         }
     }
     close(client->socket_fd);
