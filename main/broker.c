@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
+#include <sys/wait.h>
 #include <sys/types.h>
 #include <unistd.h>
 #include <arpa/inet.h>
@@ -79,6 +80,7 @@ int main() {
     int addrlen = sizeof(address);
     int yes = 1;
     char ret;
+    pid_t pid;
 
     init_subscriber_info();
 
@@ -123,14 +125,20 @@ int main() {
         }
 
         // クライアント情報の保存
-        pthread_mutex_lock(&clients_mutex);
+        // pthread_mutex_lock(&clients_mutex);
         clients[client_count].id = client_count;
         clients[client_count].socket_fd = new_socket;
         clients[client_count].client_addr = address;
-        pthread_t tid;
-        pthread_create(&tid, NULL, handle_client, &clients[client_count]);
-        client_count++;
-        pthread_mutex_unlock(&clients_mutex);
+        if((pid = fork()) == -1) {
+            perror("fork failed\n");
+            return 1;
+        }else if(pid == 0){
+            handle_client(&clients[client_count]);
+            exit(0);
+        }else if(pid > 0){
+            client_count++;
+        }
+        // pthread_mutex_unlock(&clients_mutex);
     }
 
     close(server_fd);
@@ -161,17 +169,20 @@ void forward_publish_message_to_subscribers(char *topic_, unsigned char *message
     printf("Received topic: %s\n", topic_);
     printf("Received topic length: %zu\n", strlen(topic_));
     printf("mssage length : %d\n", message_length);
-    pthread_mutex_lock(&subscribers_mutex);
+    // pthread_mutex_lock(&subscribers_mutex);
     print_bits("forward contents", message, message_length);
     for (int i = 0; i < MAX_CLIENTS; ++i) {
+        printf("i  : %d\n", i);
         if (subscriber_info[i].socket_fd_for_subscriber != -1) {
             if (strcmp(topic_, subscriber_info[i].client_topic) == 0) {
                 printf("Forwarding PUBLISH message to subscriber on topic %s\n", topic_);
                 send_message_to_client(subscriber_info[i].socket_fd_for_subscriber, message, message_length );
+            }else{
+                printf("non matching topic\n");
             }
         }
     }
-    pthread_mutex_unlock(&subscribers_mutex);
+    // pthread_mutex_unlock(&subscribers_mutex);
 }
 
 
@@ -203,7 +214,6 @@ void *handle_client(void *arg) {
         memcpy(remaining_length_byte , &buffer[1] , remaining_length_byte_count+1);
         Packet_Length = decode_remaining_length(remaining_length_byte);
 
-        printf("packet length  : %d\n", Packet_Length);
         // whileとforどっちがいいんだろう
         while(total_read_packet_size <= Packet_Length + sizeof(MQTT_fixed_header)){
             valread = read(client->socket_fd, buffer + total_read_packet_size, BUFFER_SIZE - total_read_packet_size);
@@ -213,6 +223,7 @@ void *handle_client(void *arg) {
 
         buffer[valread] = '\0';
         printf("Received message from client %d: %d bytes\n", client->id, valread);
+        printf("packet length  : %d\n", Packet_Length);
         
         unsigned char command_type = buffer[0] >> 4;
         COMMAND_TYPE ctype = (unsigned int)command_type;
@@ -249,11 +260,11 @@ void *handle_client(void *arg) {
                     strcpy(client_id , "non client ID\0");
                 };
                 
-                pthread_mutex_lock(&clients_mutex);
+                // pthread_mutex_lock(&clients_mutex);
                 handle_client_connect(client->socket_fd, client->client_addr, client_id);
                 memcpy(client->client_id, client_id, BUFFER_SIZE - 1);
                 client->client_id[BUFFER_SIZE - 1] = '\0';
-                pthread_mutex_unlock(&clients_mutex);
+                // pthread_mutex_unlock(&clients_mutex);
 
                 unsigned char *return_connack_packet = return_connack();
                 if (return_connack_packet == NULL) {
@@ -279,8 +290,6 @@ void *handle_client(void *arg) {
 
                 printf("topic id : %s\n", cur_topic_id);
                 printf("packet length  : %d\n" ,valread);
-                // char * strip_packet =  (char *)malloc(valread - 2);
-                // memcpy(strip_packet , p , valread - 2);
                 // delite Disconnect Req
                 forward_publish_message_to_subscribers(cur_topic_id, p , valread - 2);
                 free(cur_topic_id);
@@ -295,8 +304,8 @@ void *handle_client(void *arg) {
                 int topic_count = 0;
                 int topic_flag = sizeof(MQTT_fixed_header) + 1 + sizeof(MQTT_payload_message_id_header);
                 while (1) {
-                    printf("topic_count  : %d\n", topic_count);
                     topic_count++;
+                    printf("topic_count  : %d\n", topic_count);
                     int topic_length = combine_MSB_LSB(mptih->TOPIC_ID_length_MSB, mptih->TOPIC_ID_length_LSB);
                     char *request_QoS_level = ((char*)mptih + sizeof(MQTT_payload_topic_id_header_in_subscribe) + topic_length - 1);
                     control_topic_subscriber(client->socket_fd, client->client_addr, mptih->TOPICID, (uint8_t)request_QoS_level[0], topic_length);
@@ -320,9 +329,9 @@ void *handle_client(void *arg) {
             }
             case DISCONNECT : {
                 printf("Client %d disconnected\n", client->id);
-                pthread_mutex_lock(&clients_mutex);
+                // pthread_mutex_lock(&clients_mutex);
                 clients[client->id].socket_fd = -1;
-                pthread_mutex_unlock(&clients_mutex);
+                // pthread_mutex_unlock(&clients_mutex);
                 close(client->socket_fd);
                 break;
             }
