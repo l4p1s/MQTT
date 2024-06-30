@@ -117,7 +117,7 @@ void *handle_client(void *arg1, void *arg2);
 void handle_client_connect(int socket_fd, struct sockaddr_in client_addr, char *client_id);
 void handle_client_disconnect(int socket_fd);
 void send_message_to_client(int socket_fd, unsigned char *message, int message_length);
-void control_topic_subscriber(int socket_fd, struct sockaddr_in client_addr, char *TOPICID , uint8_t request_QoS_level , int message_id);
+void control_topic_subscriber(int socket_fd, struct sockaddr_in client_addr, char *TOPICID , uint8_t request_QoS_level , int message_id , TOPIC_INFO *subscriber_info);
 void unsubscribe_topic(int socket_fd , char *TOPICID);
 void init_subscriber_info();
 

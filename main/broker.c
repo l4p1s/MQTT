@@ -24,7 +24,7 @@ int client_count = 0;
 
 
 
-void control_topic_subscriber(int socket_fd, struct sockaddr_in client_addr, char *TOPICID , uint8_t request_QoS_level , int message_id){
+void control_topic_subscriber(int socket_fd, struct sockaddr_in client_addr, char *TOPICID , uint8_t request_QoS_level , int message_id ,TOPIC_INFO *subscriber_info){
     for(int i=0 ; i < MAX_CLIENTS ; i++){
         if(subscriber_info[i].socket_fd_for_subscriber == -1){
             subscriber_info[i].socket_fd_for_subscriber = socket_fd;
@@ -70,7 +70,7 @@ void handle_client_disconnect(int socket_fd) {
 }
 
 void init_subscriber_info(TOPIC_INFO * subscriber_info) {
-    for (int i = 0; i < MAX_CLIENTS; ++i) {
+    for (int i = 0; i < 10; ++i) {
         subscriber_info[i].socket_fd_for_subscriber = -1;
         printf("num  : %d\n", i);
         printf("subscribe info  : %d\n", subscriber_info[i].socket_fd_for_subscriber);
@@ -320,7 +320,7 @@ void *handle_client(void *arg1 , void *arg2) {
                     printf("topic_count  : %d\n", topic_count);
                     int topic_length = combine_MSB_LSB(mptih->TOPIC_ID_length_MSB, mptih->TOPIC_ID_length_LSB);
                     char *request_QoS_level = ((char*)mptih + sizeof(MQTT_payload_topic_id_header_in_subscribe) + topic_length - 1);
-                    control_topic_subscriber(client->socket_fd, client->client_addr, mptih->TOPICID, (uint8_t)request_QoS_level[0], topic_length);
+                    control_topic_subscriber(client->socket_fd, client->client_addr, mptih->TOPICID, (uint8_t)request_QoS_level[0], topic_length , subscriber_info);
                     topic_flag += sizeof(MQTT_payload_topic_id_header_in_subscribe) + combine_MSB_LSB(mptih->TOPIC_ID_length_MSB, mptih->TOPIC_ID_length_LSB);
                     if(topic_flag < valread){
                         mptih = (MQTT_payload_topic_id_header_in_subscribe *)((uint8_t *)mptih + sizeof(MQTT_payload_topic_id_header_in_subscribe) + topic_length);
