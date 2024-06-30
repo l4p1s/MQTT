@@ -213,9 +213,8 @@ void *handle_client(void *arg) {
 
         buffer[valread] = '\0';
         printf("Received message from client %d: %d bytes\n", client->id, valread);
-
+        
         unsigned char command_type = buffer[0] >> 4;
-
         COMMAND_TYPE ctype = (unsigned int)command_type;
 
         print_bits("packet contents", (unsigned char *)buffer, valread);
