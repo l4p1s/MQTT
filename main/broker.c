@@ -4,6 +4,7 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <sys/wait.h>
+#include <sys/mman.h>
 #include <sys/types.h>
 #include <unistd.h>
 #include <arpa/inet.h>
@@ -17,9 +18,10 @@
 
 
 // Mutex for clients array
-pthread_mutex_t clients_mutex = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t subscribers_mutex = PTHREAD_MUTEX_INITIALIZER;
+// pthread_mutex_t clients_mutex = PTHREAD_MUTEX_INITIALIZER;
+// pthread_mutex_t subscribers_mutex = PTHREAD_MUTEX_INITIALIZER;
 int client_count = 0;
+
 
 
 void control_topic_subscriber(int socket_fd, struct sockaddr_in client_addr, char *TOPICID , uint8_t request_QoS_level , int message_id){
@@ -31,7 +33,7 @@ void control_topic_subscriber(int socket_fd, struct sockaddr_in client_addr, cha
             subscriber_info[i].request_QoS_level = request_QoS_level;
             strcpy(subscriber_info[i].client_topic , TOPICID);
             printf("subscribe topic %s \n", subscriber_info[i].client_topic);
-            printf("subscribe topic %d \n", subscriber_info[i].request_QoS_level);
+            printf("subscribe topic QoS %d \n", subscriber_info[i].request_QoS_level);
             break;
         }
     }
@@ -67,9 +69,11 @@ void handle_client_disconnect(int socket_fd) {
     }
 }
 
-void init_subscriber_info() {
+void init_subscriber_info(TOPIC_INFO * subscriber_info) {
     for (int i = 0; i < MAX_CLIENTS; ++i) {
         subscriber_info[i].socket_fd_for_subscriber = -1;
+        printf("num  : %d\n", i);
+        printf("subscribe info  : %d\n", subscriber_info[i].socket_fd_for_subscriber);
     }
 }
 
@@ -81,9 +85,16 @@ int main() {
     int yes = 1;
     char ret;
     pid_t pid;
+    TOPIC_INFO *mmmap_ptr;
 
-    init_subscriber_info();
-
+    
+    mmmap_ptr = (TOPIC_INFO *)mmap(NULL, sizeof(subscriber_info[MAX_CLIENTS]), PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS, -1, 0);
+    if (mmmap_ptr == MAP_FAILED) {
+        perror("mmap failed\n");
+        exit(1);
+    }
+    init_subscriber_info(mmmap_ptr);
+    
     // ソケットの作成
     if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0) {
         perror("socket failed");
@@ -133,7 +144,7 @@ int main() {
             perror("fork failed\n");
             return 1;
         }else if(pid == 0){
-            handle_client(&clients[client_count]);
+            handle_client(&clients[client_count] , mmmap_ptr);
             exit(0);
         }else if(pid > 0){
             client_count++;
@@ -164,7 +175,7 @@ void print_binary(unsigned char byte) {
 }
 
 
-void forward_publish_message_to_subscribers(char *topic_, unsigned char *message, int message_length) {
+void forward_publish_message_to_subscribers(char *topic_, unsigned char *message, int message_length , TOPIC_INFO *subscriber_info) {
     printf("Forwarding function\n");
     printf("Received topic: %s\n", topic_);
     printf("Received topic length: %zu\n", strlen(topic_));
@@ -172,7 +183,7 @@ void forward_publish_message_to_subscribers(char *topic_, unsigned char *message
     // pthread_mutex_lock(&subscribers_mutex);
     print_bits("forward contents", message, message_length);
     for (int i = 0; i < MAX_CLIENTS; ++i) {
-        printf("i  : %d\n", i);
+        printf("i  : %d\n", subscriber_info[i].socket_fd_for_subscriber);
         if (subscriber_info[i].socket_fd_for_subscriber != -1) {
             if (strcmp(topic_, subscriber_info[i].client_topic) == 0) {
                 printf("Forwarding PUBLISH message to subscriber on topic %s\n", topic_);
@@ -186,8 +197,9 @@ void forward_publish_message_to_subscribers(char *topic_, unsigned char *message
 }
 
 
-void *handle_client(void *arg) {
-    ClientInfo *client = (ClientInfo *)arg;
+void *handle_client(void *arg1 , void *arg2) {
+    ClientInfo *client = (ClientInfo *)arg1;
+    TOPIC_INFO *subscriber_info = (TOPIC_INFO *)arg2;
     char *buffer;
     buffer = (char *)malloc(BUFFER_SIZE);
     int valread;
@@ -291,7 +303,7 @@ void *handle_client(void *arg) {
                 printf("topic id : %s\n", cur_topic_id);
                 printf("packet length  : %d\n" ,valread);
                 // delite Disconnect Req
-                forward_publish_message_to_subscribers(cur_topic_id, p , valread - 2);
+                forward_publish_message_to_subscribers(cur_topic_id, p , valread - 2 , subscriber_info);
                 free(cur_topic_id);
                 break;
             }

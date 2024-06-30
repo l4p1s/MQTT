@@ -1,26 +1,33 @@
 #include <unistd.h>
 #include <stdio.h>
+#include <sys/wait.h>
+
+struct h {
+        int a;
+        int b;
+        int c;
+        int d;
+} hoge;
 
 int main()
 {
-    int i = 0;
-    pid_t pid;
-
-    printf("fork start\n");
-    if ((pid = fork()) == -1) {
-        perror("fork");
-        return 1;
-    }
-    else if (pid > 0) {
-        printf("parent: waiting ...\n");
-        wait(NULL);
-        printf("parent: my child just finished\n");
-    }
-    else {
-        for (i = 0; i < 4; i++) {
-            printf("%02d: child running...\n", i);
-            sleep(1);
+        hoge.a = 1;
+        pid_t pid;
+        pid = fork();
+        if (pid) {
+                // parrent process
+                hoge.b = 2;
+                if (pid != -1) {
+                        int stat;
+                        wait(&stat);
+                } else {
+                        printf("fork failed\n");
+                }
+                printf("p: %d %d %d %d\n", hoge.a, hoge.b, hoge.c, hoge.d);
+        } else {
+                // child process
+                hoge.c = 3;
+                printf("c: %d %d %d %d\n", hoge.a, hoge.b, hoge.c, hoge.d);
         }
-    }
-    return 0;
+        return 0;
 }

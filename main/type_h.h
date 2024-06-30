@@ -25,6 +25,8 @@ typedef struct {
 
 ClientInfo clients[MAX_CLIENTS];
 
+
+
 typedef struct{
     int id;
     int socket_fd_for_subscriber;
@@ -111,7 +113,7 @@ unsigned char* return_pingresp();
 unsigned char* return_suback(char *p , int topic_count , int remaining_length_byte_count);
 unsigned char* send_publish_command(MQTT_fixed_header *cfh);
 void print_struct_values(MQTT_fixed_header *fh, MQTT_variable_header_protocol_name *phpn, MQTT_variable_Header_in_connect *vh, MQTT_variable_Header_in_connect *ph);
-void *handle_client(void *arg);
+void *handle_client(void *arg1, void *arg2);
 void handle_client_connect(int socket_fd, struct sockaddr_in client_addr, char *client_id);
 void handle_client_disconnect(int socket_fd);
 void send_message_to_client(int socket_fd, unsigned char *message, int message_length);
