@@ -72,8 +72,6 @@ void handle_client_disconnect(int socket_fd) {
 void init_subscriber_info(TOPIC_INFO * subscriber_info) {
     for (int i = 0; i < 10; ++i) {
         subscriber_info[i].socket_fd_for_subscriber = -1;
-        printf("num  : %d\n", i);
-        printf("subscribe info  : %d\n", subscriber_info[i].socket_fd_for_subscriber);
     }
 }
 
@@ -183,13 +181,10 @@ void forward_publish_message_to_subscribers(char *topic_, unsigned char *message
     // pthread_mutex_lock(&subscribers_mutex);
     print_bits("forward contents", message, message_length);
     for (int i = 0; i < MAX_CLIENTS; ++i) {
-        printf("i  : %d\n", subscriber_info[i].socket_fd_for_subscriber);
         if (subscriber_info[i].socket_fd_for_subscriber != -1) {
             if (strcmp(topic_, subscriber_info[i].client_topic) == 0) {
                 printf("Forwarding PUBLISH message to subscriber on topic %s\n", topic_);
                 send_message_to_client(subscriber_info[i].socket_fd_for_subscriber, message, message_length );
-            }else{
-                printf("non matching topic\n");
             }
         }
     }
