@@ -70,7 +70,7 @@ void handle_client_disconnect(int socket_fd) {
 }
 
 void init_subscriber_info(TOPIC_INFO * subscriber_info) {
-    for (int i = 0; i < 10; ++i) {
+    for (int i = 0; i < 20; ++i) {
         subscriber_info[i].socket_fd_for_subscriber = -1;
     }
 }
@@ -222,7 +222,7 @@ void *handle_client(void *arg1 , void *arg2) {
         Packet_Length = decode_remaining_length(remaining_length_byte);
 
         // whileとforどっちがいいんだろう
-        while(total_read_packet_size <= Packet_Length + sizeof(MQTT_fixed_header)){
+        while(total_read_packet_size == Packet_Length + sizeof(MQTT_fixed_header)){
             valread = read(client->socket_fd, buffer + total_read_packet_size, BUFFER_SIZE - total_read_packet_size);
             total_read_packet_size += valread;
             printf("total read packet length  : %d\n", total_read_packet_size);
