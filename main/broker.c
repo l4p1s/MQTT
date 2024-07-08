@@ -179,7 +179,7 @@ void forward_publish_message_to_subscribers(char *topic_, unsigned char *message
     printf("Received topic length: %zu\n", strlen(topic_));
     printf("mssage length : %d\n", message_length);
     // pthread_mutex_lock(&subscribers_mutex);
-    print_bits("forward contents", message, message_length);
+    print_bits("forward binary contents", message, message_length);
     for (int i = 0; i < MAX_CLIENTS; ++i) {
         if (subscriber_info[i].socket_fd_for_subscriber != -1) {
             if (strcmp(topic_, subscriber_info[i].client_topic) == 0) {
@@ -297,8 +297,10 @@ void *handle_client(void *arg1 , void *arg2) {
 
                 printf("topic id : %s\n", cur_topic_id);
                 printf("packet length  : %d\n" ,valread);
-                // delite Disconnect Req
-                forward_publish_message_to_subscribers(cur_topic_id, p , valread - 2 , subscriber_info);
+                forward_publish_message_to_subscribers(cur_topic_id, p , sizeof(MQTT_fixed_header) + Packet_Length + 1 , subscriber_info);
+
+                char * packet_contents = (char*)(vtihip + sizeof(MQTT_variable_topic_id_header_in_publish) + topic_length + 1);
+                printf("contents : %s\n", packet_contents);
                 free(cur_topic_id);
                 break;
             }
