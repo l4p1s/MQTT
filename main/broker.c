@@ -211,17 +211,16 @@ void *handle_client(void *arg1 , void *arg2) {
 
         int remaining_length_byte_count = 1;
         while(1){
-            print_bits("buffer[remaining_length_byte_count]" , &(buffer[remaining_length_byte_count]) , 1);
-            printf("masked 0x80  :  %d\n", (int)buffer[remaining_length_byte_count] & 0x80);
+            // print_bits("buffer[remaining_length_byte_count]" , &(buffer[remaining_length_byte_count]) , 1);
+            // printf("masked 0x80  :  %d\n", (int)buffer[remaining_length_byte_count] & 0x80);
             if(((int)buffer[remaining_length_byte_count] & 0x80) == 128){
                 remaining_length_byte_count += 1;
             }else{
                 break;
             }
         }
-
         printf("remaining_length_byte_count  :  %d\n", remaining_length_byte_count);
-        memcpy(remaining_length_byte , &buffer[1] , remaining_length_byte_count + 1);
+        memcpy(remaining_length_byte , &buffer[1] , remaining_length_byte_count);
         Packet_Length = decode_remaining_length(remaining_length_byte);
 
         // whileとforどっちがいいんだろう
@@ -301,7 +300,7 @@ void *handle_client(void *arg1 , void *arg2) {
 
                 printf("topic id : %s\n", cur_topic_id);
                 printf("packet length  : %d\n" ,valread);
-                forward_publish_message_to_subscribers(cur_topic_id, p , sizeof(MQTT_fixed_header) + Packet_Length + 1 , subscriber_info);
+                forward_publish_message_to_subscribers(cur_topic_id, p , sizeof(MQTT_fixed_header) + Packet_Length + remaining_length_byte_count , subscriber_info);
 
                 char * packet_contents = (char*)(vtihip + sizeof(MQTT_variable_topic_id_header_in_publish) + topic_length + 1);
                 printf("contents : %s\n", packet_contents);
