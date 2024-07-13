@@ -211,14 +211,17 @@ void *handle_client(void *arg1 , void *arg2) {
 
         int remaining_length_byte_count = 1;
         while(1){
-            if(buffer[remaining_length_byte_count + 1] >> 7 == 1){
-                remaining_length_byte_count +=1;
+            print_bits("buffer[remaining_length_byte_count]" , &(buffer[remaining_length_byte_count]) , 1);
+            printf("masked 0x80  :  %d\n", (int)buffer[remaining_length_byte_count] & 0x80);
+            if(((int)buffer[remaining_length_byte_count] & 0x80) == 128){
+                remaining_length_byte_count += 1;
             }else{
                 break;
             }
         }
 
-        memcpy(remaining_length_byte , &buffer[1] , remaining_length_byte_count+1);
+        printf("remaining_length_byte_count  :  %d\n", remaining_length_byte_count);
+        memcpy(remaining_length_byte , &buffer[1] , remaining_length_byte_count + 1);
         Packet_Length = decode_remaining_length(remaining_length_byte);
 
         // whileとforどっちがいいんだろう
@@ -235,7 +238,7 @@ void *handle_client(void *arg1 , void *arg2) {
         unsigned char command_type = buffer[0] >> 4;
         COMMAND_TYPE ctype = (unsigned int)command_type;
 
-        print_bits("packet contents", (unsigned char *)buffer, valread);
+        // print_bits("packet contents", (unsigned char *)buffer, valread);
         // printf("recieved fd  : %d\n", client->socket_fd);
 
         char *p = buffer;
@@ -255,7 +258,6 @@ void *handle_client(void *arg1 , void *arg2) {
                 printf("CONNECT message received from client %d\n", client->id);
         
                 MQTT_variable_header_protocol_name *phpn = (MQTT_variable_header_protocol_name*)(p + remaining_length_byte_count + 1);
-
                 MQTT_variable_Header_in_connect *mphic = (MQTT_variable_Header_in_connect *)((char*)phpn + sizeof(MQTT_variable_header_protocol_name) + combine_MSB_LSB(phpn->protocol_name_length_MSB , phpn->protocol_name_length_LSB) );
                 MQTT_payload_header_in_connect *phic = (MQTT_payload_header_in_connect *)((char*) mphic + sizeof(MQTT_variable_Header_in_connect));
 
@@ -286,7 +288,9 @@ void *handle_client(void *arg1 , void *arg2) {
             }
             case PUBLISH: { // PUBLISH message
                 printf("PUBLISH message received from client %d\n", client->id);
-                MQTT_variable_topic_id_header_in_publish *vtihip = (MQTT_variable_topic_id_header_in_publish *)(p+remaining_length_byte_count +1);
+                MQTT_variable_topic_id_header_in_publish *vtihip = (MQTT_variable_topic_id_header_in_publish *)(p + remaining_length_byte_count + sizeof(MQTT_fixed_header));
+                print_bits("TOPIC_ID_length_MSB", &(vtihip->TOPIC_ID_length_MSB), 1);
+                print_bits("TOPIC_ID_length_LSB", &(vtihip->TOPIC_ID_length_LSB), 1);
                 int topic_length = combine_MSB_LSB(vtihip->TOPIC_ID_length_MSB , vtihip->TOPIC_ID_length_LSB);
                 printf("topic length : %d\n", topic_length);
                 char *cur_topic_id = (char *)malloc(topic_length);
