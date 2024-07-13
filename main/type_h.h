@@ -12,7 +12,8 @@
 
 #define MAX_CLIENTS 100
 #define CLIENT_BUFFER_SIZE 24
-#define BUFFER_SIZE (256 * 1024 * 1024)
+#define BUFFER_SIZE 256 * 1024 * 1024
+#define small_BUFFER_SIZE 256
 
 
 // クライアント情報の構造体

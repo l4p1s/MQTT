@@ -51,8 +51,8 @@ void handle_client_connect(int socket_fd, struct sockaddr_in client_addr, char *
         if (clients[i].socket_fd == -1) { // 空いているスロットを見つける
             clients[i].socket_fd = socket_fd;
             clients[i].client_addr = client_addr;
-            memcpy(clients[i].client_id, client_id, BUFFER_SIZE - 1);
-            clients[i].client_id[BUFFER_SIZE - 1] = '\0'; // 念のためNULL終端
+            memcpy(clients[i].client_id, client_id, small_BUFFER_SIZE - 1);
+            clients[i].client_id[small_BUFFER_SIZE - 1] = '\0'; // 念のためNULL終端
             break;
         }
     }
@@ -63,7 +63,7 @@ void handle_client_disconnect(int socket_fd) {
         if (clients[i].socket_fd == socket_fd) {
             close(clients[i].socket_fd);
             clients[i].socket_fd = -1;
-            memset(clients[i].client_id, 0, BUFFER_SIZE);
+            memset(clients[i].client_id, 0, small_BUFFER_SIZE);
             break;
         }
     }
@@ -259,18 +259,18 @@ void *handle_client(void *arg1 , void *arg2) {
                 MQTT_variable_Header_in_connect *mphic = (MQTT_variable_Header_in_connect *)((char*)phpn + sizeof(MQTT_variable_header_protocol_name) + combine_MSB_LSB(phpn->protocol_name_length_MSB , phpn->protocol_name_length_LSB) );
                 MQTT_payload_header_in_connect *phic = (MQTT_payload_header_in_connect *)((char*) mphic + sizeof(MQTT_variable_Header_in_connect));
 
-                char client_id[BUFFER_SIZE];
+                char client_id[small_BUFFER_SIZE];
                 if(mphic->something_flags >> 7 ==1){
-                    memcpy(client_id, phic->clientID, BUFFER_SIZE + 1);
-                    client_id[BUFFER_SIZE + 1] = '\0';
+                    memcpy(client_id, phic->clientID, small_BUFFER_SIZE + 1);
+                    client_id[small_BUFFER_SIZE + 1] = '\0';
                 }else{
                     strcpy(client_id , "non client ID\0");
                 };
                 
                 // pthread_mutex_lock(&clients_mutex);
                 handle_client_connect(client->socket_fd, client->client_addr, client_id);
-                memcpy(client->client_id, client_id, BUFFER_SIZE - 1);
-                client->client_id[BUFFER_SIZE - 1] = '\0';
+                memcpy(client->client_id, client_id, small_BUFFER_SIZE - 1);
+                client->client_id[small_BUFFER_SIZE - 1] = '\0';
                 // pthread_mutex_unlock(&clients_mutex);
 
                 unsigned char *return_connack_packet = return_connack();
